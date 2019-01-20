@@ -33,7 +33,12 @@
             <td><button id="backward"  name="bt" value="BK" class="button">▼</button></td>
             <td><button id="rightdown" name="bt" value="DR" class="smbutton">⏬</button></td>
             <td></td>
-          </tr>
+		  </tr>
+		  <tr>
+			<td><input id="leftIn"  value=90 >LEFT</input></td>
+			<td><input id="rightIn"  value=90 >RIGHT</input></td>
+			<td><button id="sendInput"  name="valInput" value="SI" class="smbutton">Send Input</button></td>
+		  </tr>
         </table>
       </td>
       <td>
@@ -58,11 +63,18 @@
       var ltSlider = document.getElementById("ltSlider");
       var rtSlider = document.getElementById("rtSlider");
 
+	  var leftIn = document.getElementById("leftIn");
+	  var rightIn = document.getElementById("rightIn");
+
       var btns = document.getElementsByName("slide");
       for (var i = 0; i < btns.length; i++) {
           btns[i].oninput = function(e) {sliderSend(); e.stopPropagation(); e.preventDefault();};
           btns[i].onchange = function() {btnRelease(); e.stopPropagation(); e.preventDefault();}
       }
+
+	  var btns = document.getElementsByName("valInput");
+        btns[0].onmousedown = function(e) {inputSend(); e.stopPropagation(); e.preventDefault();};
+    
 
       var btns = document.getElementsByName("bt");
       for (var i = 0; i < btns.length; i++) {
@@ -146,6 +158,19 @@
       console.log("Slider moved, sending ~(" + ltSlider.value + ", " + rtSlider.value + ")");
       connection.send(bbuf.buffer);
     }
+
+	function inputSend() {
+		var timeStr = new Date().toLocaleTimeString();
+		var text = "(" + timeStr + ") : TX = ~(" + leftIn.value + ", " + rightIn.value +  ")<br>";
+		txLog(text);
+		var bbuf = new Uint8Array(3);
+		bbuf[0] = 126; // ~
+		bbuf[1] = leftIn.value;
+		bbuf[2] = rightIn.value;
+
+		console.log("Sending val input, sending ~(" + leftIn.value + ", " + rightIn.value + ")");
+		connection.send(bbuf.buffer);
+	}
 
     function btnSend(val) {
       var timeStr = new Date().toLocaleTimeString();
