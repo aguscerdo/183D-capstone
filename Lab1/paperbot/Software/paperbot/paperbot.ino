@@ -275,7 +275,7 @@ void setupPins() {
     //end sensors
 }
 
-void sendMagnetometerData(){
+void sendMagnetometerData(uint8_t id){
     // Request first magnetometer single measurement
     I2CwriteByte(MAG_ADDRESS,0x0A,0x01);
     
@@ -343,7 +343,7 @@ void sendMagnetometerData(){
     wsSend(id, tx);
 }
 
-void sendLidarData(){
+void sendLidarData(uint8_t id){
   /*Serial.print("Lidar 1 range(mm): ");
   Serial.print(sensor.readRangeSingleMillimeters());
   if (sensor.timeoutOccurred()) { Serial.print(" TIMEOUT"); }
@@ -413,8 +413,8 @@ void webSocketEvent(uint8_t id, WStype_t type, uint8_t * payload, size_t length)
                   char tx[20] = "Zero @ (xxx, xxx)";
                   sprintf(tx, "Zero @ (%3d, %3d)", servo_left_ctr, servo_right_ctr);
                   wsSend(id, tx);
-                  sendMagnetometerData();
-                  sendLidarData();
+                  sendMagnetometerData(id);
+                  sendLidarData(id);
                 }
                 else if(payload[1] == 'D') {
                   if(payload[2] == 'L') 
@@ -424,8 +424,8 @@ void webSocketEvent(uint8_t id, WStype_t type, uint8_t * payload, size_t length)
                   char tx[20] = "Zero @ (xxx, xxx)";
                   sprintf(tx, "Zero @ (%3d, %3d)", servo_left_ctr, servo_right_ctr);
                   wsSend(id, tx);
-                  sendMagnetometerData();
-                  sendLidarData();
+                  sendMagnetometerData(id);
+                  sendLidarData(id);
                 }
                 else 
                   stop();
