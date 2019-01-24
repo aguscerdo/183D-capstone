@@ -1,12 +1,12 @@
 /*
   Wireless Servo Control, with ESP as Access Point
 
-  Usage: 
+  Usage:
     Connect phone or laptop to "ESP_XXXX" wireless network, where XXXX is the ID of the robot
-    Go to 192.168.4.1. 
+    Go to 192.168.4.1.
     A webpage with four buttons should appear. Click them to move the robot.
 
-  Installation: 
+  Installation:
     In Arduino, go to Tools > ESP8266 Sketch Data Upload to upload the files from ./data to the ESP
     Then, in Arduino, compile and upload sketch to the ESP
 
@@ -18,17 +18,17 @@
     Websockets library
       To install, Sketch > Include Library > Manage Libraries... > Websockets > Install
       https://github.com/Links2004/arduinoWebSockets
-    
+
     ESP8266FS tool
-      To install, create "tools" folder in Arduino, download, and unzip. See 
+      To install, create "tools" folder in Arduino, download, and unzip. See
       https://github.com/esp8266/Arduino/blob/master/doc/filesystem.md#uploading-files-to-file-system
 
-  Hardware: 
-  * NodeMCU Amica DevKit Board (ESP8266 chip)
-  * Motorshield for NodeMCU 
-  * 2 continuous rotation servos plugged into motorshield pins D1, D2
-  * Ultra-thin power bank 
-  * Paper chassis
+  Hardware:
+    NodeMCU Amica DevKit Board (ESP8266 chip)
+    Motorshield for NodeMCU
+    2 continuous rotation servos plugged into motorshield pins D1, D2
+    Ultra-thin power bank
+    Paper chassis
 
 */
 
@@ -60,12 +60,12 @@ VL53L0X sensor2;
 #define    MPU9250_ADDRESS            0x68
 #define    MAG_ADDRESS                0x0C
 
-#define    GYRO_FULL_SCALE_250_DPS    0x00  
+#define    GYRO_FULL_SCALE_250_DPS    0x00
 #define    GYRO_FULL_SCALE_500_DPS    0x08
 #define    GYRO_FULL_SCALE_1000_DPS   0x10
 #define    GYRO_FULL_SCALE_2000_DPS   0x18
 
-#define    ACC_FULL_SCALE_2_G        0x00  
+#define    ACC_FULL_SCALE_2_G        0x00
 #define    ACC_FULL_SCALE_4_G        0x08
 #define    ACC_FULL_SCALE_8_G        0x10
 #define    ACC_FULL_SCALE_16_G       0x18
@@ -83,9 +83,9 @@ char ap_ssid[13];
 char* ap_password = "";
 
 // WiFi STA parameters
-char* sta_ssid = 
+char* sta_ssid =
   "...";
-char* sta_password = 
+char* sta_password =
   "...";
 
 char* mDNS_name = "paperbot";
@@ -95,20 +95,20 @@ String css;
 
 // sensor functions:
 
-// This function read Nbytes bytes from I2C device at address Address. 
-// Put read bytes starting at register Register in the Data array. 
+// This function read Nbytes bytes from I2C device at address Address.
+// Put read bytes starting at register Register in the Data array.
 void I2Cread(uint8_t Address, uint8_t Register, uint8_t Nbytes, uint8_t* Data)
 {
   // Set register address
   Wire.beginTransmission(Address);
   Wire.write(Register);
   Wire.endTransmission();
-  
+
   // Read Nbytes
-  Wire.requestFrom(Address, Nbytes); 
-  uint8_t index=0;
+  Wire.requestFrom(Address, Nbytes);
+  uint8_t index = 0;
   while (Wire.available())
-    Data[index++]=Wire.read();
+    Data[index++] = Wire.read();
 }
 
 
@@ -122,41 +122,47 @@ void I2CwriteByte(uint8_t Address, uint8_t Register, uint8_t Data)
   Wire.endTransmission();
 }
 //end sensor functions
+  float m_bias[3] = {1, 1, 1};
+  float m_scale[3] = {1, 1, 1};
 
+  
 void setup() {
-    setupPins();
+  setupPins();
 
-    sprintf(ap_ssid, "ESP_%08X", ESP.getChipId());
+  sprintf(ap_ssid, "ESP_%08X", ESP.getChipId());
 
-    for(uint8_t t = 4; t > 0; t--) {
-        Serial.printf("[SETUP] BOOT WAIT %d...\n", t);
-        Serial.flush();
-        LED_ON;
-        delay(500);
-        LED_OFF;
-        delay(500);
-    }
+  for (uint8_t t = 4; t > 0; t--) {
+    Serial.printf("[SETUP] BOOT WAIT %d...\n", t);
+    Serial.flush();
     LED_ON;
-    //setupSTA(sta_ssid, sta_password);
-    setupAP(ap_ssid, ap_password);
+    delay(500);
     LED_OFF;
+    delay(500);
+  }
+  LED_ON;
+  //setupSTA(sta_ssid, sta_password);
+  setupAP(ap_ssid, ap_password);
+  LED_OFF;
 
-    setupFile();
-    html = loadFile("/controls.html");
-    css = loadFile("/style.css");
-    registerPage("/", "text/html", html);
-    registerPage("/style.css", "text/css", css);
+  setupFile();
+  html = loadFile("/controls.html");
+  css = loadFile("/style.css");
+  registerPage("/", "text/html", html);
+  registerPage("/style.css", "text/css", css);
 
-    setupHTTP();
-    setupWS(webSocketEvent);
-    //setupMDNS(mDNS_name);
+  setupHTTP();
+  setupWS(webSocketEvent);
+  setupMDNS(mDNS_name);
 
-    stop();
+
+  magcalMPU9250(m_bias, m_scale);
+  
+  stop();
 }
 
 void loop() {
-    wsLoop();
-    httpLoop();
+  wsLoop();
+  httpLoop();
 }
 
 
@@ -201,236 +207,296 @@ void right() {
 //
 
 void setupPins() {
-    // setup Serial, LEDs and Motors
-    Serial.begin(115200);
-    DEBUG("Started serial.");
+  // setup Serial, LEDs and Motors
+  Serial.begin(115200);
+  DEBUG("Started serial.");
 
-    pinMode(LED_PIN, OUTPUT);    //Pin D0 is LED
-    LED_OFF;                     //Turn off LED
-    DEBUG("Setup LED pin.");
+  pinMode(LED_PIN, OUTPUT);    //Pin D0 is LED
+  LED_OFF;                     //Turn off LED
+  DEBUG("Setup LED pin.");
 
-    servo_left.attach(SERVO_LEFT);
-    servo_right.attach(SERVO_RIGHT);
-    DEBUG("Setup motor pins");
-    // Sensors: 
-    pinMode(D3, OUTPUT);
-    pinMode(D4, OUTPUT);
-    digitalWrite(D7, LOW);
-    digitalWrite(D8, LOW);
+  servo_left.attach(SERVO_LEFT);
+  servo_right.attach(SERVO_RIGHT);
+  DEBUG("Setup motor pins");
   
-    delay(500);
-    Wire.begin(SDA_PORT,SCL_PORT);
-  
-    Serial.begin (115200);
-  
-    digitalWrite(D3, HIGH);
-    delay(150);
-    Serial.println("00");
-    
-    sensor.init(true);
-    Serial.println("01");
-    delay(100);
-    sensor.setAddress((uint8_t)22);
-  
-    digitalWrite(D4, HIGH);
-    delay(150);
-    sensor2.init(true);
-    Serial.println("03");
-    delay(100);
-    sensor2.setAddress((uint8_t)25);
-    Serial.println("04");
-  
-    Serial.println("addresses set");
-    
-    Serial.println ("I2C scanner. Scanning ...");
-    byte count = 0;
-  
-    for (byte i = 1; i < 120; i++)
+  // Lidar Sensors:
+  pinMode(D3, OUTPUT);
+  pinMode(D4, OUTPUT);
+  digitalWrite(D7, LOW);
+  digitalWrite(D8, LOW);
+
+  delay(500);
+  Wire.begin(SDA_PORT, SCL_PORT);
+
+  Serial.begin (115200);
+
+  digitalWrite(D3, HIGH);
+  delay(150);
+  Serial.println("00");
+
+  sensor.init(true);
+  Serial.println("01");
+  delay(100);
+  sensor.setAddress((uint8_t)22);
+
+  digitalWrite(D4, HIGH);
+  delay(150);
+  sensor2.init(true);
+  Serial.println("03");
+  delay(100);
+  sensor2.setAddress((uint8_t)25);
+  Serial.println("04");
+
+  Serial.println("addresses set");
+
+  Serial.println ("I2C scanner. Scanning ...");
+  byte count = 0;
+
+  for (byte i = 1; i < 120; i++)
+  {
+
+    Wire.beginTransmission (i);
+    if (Wire.endTransmission () == 0)
     {
-  
-      Wire.beginTransmission (i);
-      if (Wire.endTransmission () == 0)
-      {
-        Serial.print ("Found address: ");
-        Serial.print (i, DEC);
-        Serial.print (" (0x");
-        Serial.print (i, HEX);
-        Serial.println (")");
-        count++;
-        delay (1);  // maybe unneeded?
-      } // end of good response
-    } // end of for loop
-    Serial.println ("Done.");
-    Serial.print ("Found ");
-    Serial.print (count, DEC);
-    Serial.println (" device(s).");
-  
-    delay(3000);
-  
-    // Set by pass mode for the magnetometers
-    I2CwriteByte(MPU9250_ADDRESS,0x37,0x02);
-    
-    // Request first magnetometer single measurement
-    I2CwriteByte(MAG_ADDRESS,0x0A,0x01);
-    //end sensors
+      Serial.print ("Found address: ");
+      Serial.print (i, DEC);
+      Serial.print (" (0x");
+      Serial.print (i, HEX);
+      Serial.println (")");
+      count++;
+      delay (1);  // maybe unneeded?
+    } // end of good response
+  } // end of for loop
+  Serial.println ("Done.");
+  Serial.print ("Found ");
+  Serial.print (count, DEC);
+  Serial.println (" device(s).");
+
+  delay(3000);
+
+  // Sensor Magnetometer
+  // Set by pass mode for the magnetometers
+  I2CwriteByte(MPU9250_ADDRESS, 0x37, 0x02);
+
+  // Request first magnetometer single measurement
+  I2CwriteByte(MAG_ADDRESS, 0x0A, 0x01);
+  //end sensors
 }
 
-void sendMagnetometerData(uint8_t id){
-    // Request first magnetometer single measurement
-    I2CwriteByte(MAG_ADDRESS,0x0A,0x01);
-    
-    // Read register Status 1 and wait for the DRDY: Data Ready
-    
-    uint8_t ST1;
-    uint8_t ii = 0;
-    do
-    {
-      
-      Serial.print("  -- sensor broke :( \n");
-      I2Cread(MAG_ADDRESS,0x02,1,&ST1);
-    }
-    while (!(ST1&0x01));
+void magcalMPU9250(float * dest1, float * dest2) 
+{
+ uint16_t ii = 0, sample_count = 0;
+ int32_t mag_bias[3] = {0, 0, 0}, mag_scale[3] = {0, 0, 0};
+ int16_t mag_max[3] = {-32767, -32767, -32767}, mag_min[3] = {32767, 32767, 32767}, mag_temp[3] = {0, 0, 0};
+ float MPU9250mRes = 10.*4912./32760.;
+
+ Serial.println("Mag Calibration: Wave device in a figure eight until done!");
+ delay(4000);
+
+ sample_count = 400;
+
+ for(ii = 0; ii < sample_count; ii++) {
+  uint8_t Mag[7];
+  I2Cread(MAG_ADDRESS, 0x03, 7, Mag);
   
-    // Read magnetometer data  
-    uint8_t Mag[7];  
-    I2Cread(MAG_ADDRESS,0x03,7,Mag);
-  
-    // Create 16 bits values from 8 bits data
-    
-    // Magnetometer
-    int16_t mx=(Mag[1]<<8 | Mag[0]);
-    int16_t my=(Mag[3]<<8 | Mag[2]);
-    int16_t mz=(Mag[5]<<8 | Mag[4]);
-  
-    float heading = atan2(mx, my);
-  
-    // Once you have your heading, you must then add your 'Declination Angle',
-    // which is the 'Error' of the magnetic field in your location. Mine is 0.0404 
-    // Find yours here: http://www.magnetic-declination.com/
-    
-    // If you cannot find your Declination, comment out these two lines, your compass will be slightly off.
-    float declinationAngle = 0.0404;
-    heading += declinationAngle;
-  
-    // Correct for when signs are reversed.
-    if(heading < 0)
-      heading += 2*PI;
-  
-    // Check for wrap due to addition of declination.
-    if(heading > 2*PI)
-      heading -= 2*PI;
-  
-    // Convert radians to degrees for readability.
-    float headingDegrees = heading * 180/PI; 
-  
-    /*Serial.print("\rHeading:\t");
-    Serial.print(heading);
-    Serial.print(" Radians   \t");
-    Serial.print(headingDegrees);
-    Serial.println(" Degrees   \t");
-  
-    Serial.print ("Magnetometer readings:"); 
-    Serial.print ("\tMx:");
-    Serial.print (mx); 
-    Serial.print ("\tMy:");
-    Serial.print (my);
-    Serial.print ("\tMz:");
-    Serial.print (mz);  
-    Serial.println ("\t");*/
-    //Might need to adjust to lower size(?)
-    char tx[100] = "blank";
-    sprintf(tx, "Mx,My,Mz: (%d, %d, %d). Deg: (%f)\0", mx, my, mz, headingDegrees);
-    wsSend(id, tx);
+  mag_temp[0] = (Mag[1] << 8 | Mag[0]);
+  mag_temp[1] = (Mag[3] << 8 | Mag[2]);
+  mag_temp[2] = (Mag[5] << 8 | Mag[4]);
+
+  for (int jj = 0; jj < 3; jj++) {
+    if(mag_temp[jj] > mag_max[jj]) mag_max[jj] = mag_temp[jj];
+    if(mag_temp[jj] < mag_min[jj]) mag_min[jj] = mag_temp[jj];
+  }
+  delay(10);
 }
 
-void sendLidarData(uint8_t id){
+
+// Get hard iron correction
+ mag_bias[0]  = (mag_max[0] + mag_min[0])/2;  // get average x mag bias in counts
+ mag_bias[1]  = (mag_max[1] + mag_min[1])/2;  // get average y mag bias in counts
+ mag_bias[2]  = (mag_max[2] + mag_min[2])/2;  // get average z mag bias in counts
+
+ float MPU9250magCalibration[3];
+ MPU9250magCalibration[0] = 1;
+ MPU9250magCalibration[1] = 1;
+ MPU9250magCalibration[2] = 1;
+
+ dest1[0] = (float) mag_bias[0]*MPU9250mRes*MPU9250magCalibration[0];  // save mag biases in G for main program
+ dest1[1] = (float) mag_bias[1]*MPU9250mRes*MPU9250magCalibration[1];   
+ dest1[2] = (float) mag_bias[2]*MPU9250mRes*MPU9250magCalibration[2];  
+   
+// Get soft iron correction estimate
+ mag_scale[0]  = (mag_max[0] - mag_min[0]+2)/2;  // get average x axis max chord length in counts
+ mag_scale[1]  = (mag_max[1] - mag_min[1]+2)/2;  // get average y axis max chord length in counts
+ mag_scale[2]  = (mag_max[2] - mag_min[2]+2)/2;  // get average z axis max chord length in counts
+
+ float avg_rad = (mag_scale[0] + mag_scale[1] + mag_scale[2]) / 3;
+ Serial.println(avg_rad);
+ Serial.println(mag_max[0]);
+ Serial.println(mag_min[0]);
+ 
+ dest2[0] = avg_rad/((float)mag_scale[0]);
+ dest2[1] = avg_rad/((float)mag_scale[1]);
+ dest2[2] = avg_rad/((float)mag_scale[2]);
+ 
+ Serial.println("CALIBRATION VALUES!!!!");
+ char text[200];
+ sprintf(text, "Bias: %f %f %f", dest1[0], dest1[1], dest1[2]);
+ Serial.println(text);
+ sprintf(text, "Scale: %f %f %f", dest2[0], dest2[1], dest2[2]);
+ Serial.println(text);
+
+ Serial.println("---------------------------------------------");
+ }
+
+void sendMagnetometerData(uint8_t id) {
+  // Request first magnetometer single measurement
+  I2CwriteByte(MAG_ADDRESS, 0x0A, 0x01);
+
+  // Read register Status 1 and wait for the DRDY: Data Ready
+
+  uint8_t ST1;
+  uint8_t ii = 0;
+  do
+  {
+    I2Cread(MAG_ADDRESS, 0x02, 1, &ST1);
+  }
+  while (!(ST1 & 0x01));
+
+  // Read magnetometer data
+  uint8_t Mag[7];
+  I2Cread(MAG_ADDRESS, 0x03, 7, Mag);
+
+  // Create 16 bits values from 8 bits data
+
+  // Magnetometer
+  int16_t mx = (Mag[1] << 8 | Mag[0]);
+  int16_t my = (Mag[3] << 8 | Mag[2]);
+  int16_t mz = (Mag[5] << 8 | Mag[4]);
+
+  float mag[3];
+  mag[0] = mx * m_scale[0] - m_bias[0];
+  mag[1] = my * m_scale[1] - m_bias[1];
+  mag[2] = mz * m_scale[2] - m_bias[2];
+
+  float heading = atan2(mx, my);
+
+  // Once you have your heading, you must then add your 'Declination Angle',
+  // which is the 'Error' of the magnetic field in your location. Mine is 0.0404
+  // Find yours here: http://www.magnetic-declination.com/
+
+  // If you cannot find your Declination, comment out these two lines, your compass will be slightly off.
+//  float declinationAngle = 0.0404;
+//  heading += declinationAngle;
+
+  // Correct for when signs are reversed.
+  if (heading < 0)
+    heading += 2 * PI;
+
+  // Check for wrap due to addition of declination.
+  if (heading > 2 * PI)
+    heading -= 2 * PI;
+
+  // Convert radians to degrees for readability.
+  float headingDegrees = heading * 180 / PI;
+
+  //Might need to adjust to lower size(?)
+  char tx[80] = "blank";
+  sprintf(tx, "Mx,My,Mz: (%d, %d, %d). Deg: (%f)\0", mx, my, mz, headingDegrees);
+  Serial.write(tx);
+  wsSend(id, tx);
+}
+
+void sendLidarData(uint8_t id) {
   /*Serial.print("Lidar 1 range(mm): ");
-  Serial.print(sensor.readRangeSingleMillimeters());
-  if (sensor.timeoutOccurred()) { Serial.print(" TIMEOUT"); }
-  
-  Serial.print("  Lidar 2 range(mm): ");
-  Serial.println(sensor2.readRangeSingleMillimeters());
-  if (sensor.timeoutOccurred()) { Serial.println(" TIMEOUT"); }*/
+    Serial.print(sensor.readRangeSingleMillimeters());
+    if (sensor.timeoutOccurred()) { Serial.print(" TIMEOUT"); }
+
+    Serial.print("  Lidar 2 range(mm): ");
+    Serial.println(sensor2.readRangeSingleMillimeters());
+    if (sensor.timeoutOccurred()) { Serial.println(" TIMEOUT"); }*/
   char tx[100] = "blank";
-  if (sensor.timeoutOccurred() || sensor2.timeoutOccurred()){
+  if (sensor.timeoutOccurred() || sensor2.timeoutOccurred()) {
     sprintf(tx, "TIMEOUT");
   }
   else {
     //Maybe these are floats? idk
-    sprintf(tx, "L1 (mm), L2(mm): (%d,%d)", sensor.readRangeSingleMillimeters(), sensor2.readRangeSingleMillimeters());
+    sprintf(tx, "L1 (%d); L2(%d)", sensor.readRangeSingleMillimeters(), sensor2.readRangeSingleMillimeters());
   }
-    wsSend(id, tx);
+  wsSend(id, tx);
+  Serial.write(tx);
 
 }
 void webSocketEvent(uint8_t id, WStype_t type, uint8_t * payload, size_t length) {
 
-    switch(type) {
-        case WStype_DISCONNECTED:
-            DEBUG("Web socket disconnected, id = ", id);
-            break;
-        case WStype_CONNECTED: 
-        {
-            // IPAddress ip = webSocket.remoteIP(id);
-            // Serial.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", id, ip[0], ip[1], ip[2], ip[3], payload);
-            DEBUG("Web socket connected, id = ", id);
+  switch (type) {
+    case WStype_DISCONNECTED:
+      DEBUG("Web socket disconnected, id = ", id);
+      break;
+    case WStype_CONNECTED:
+      {
+        // IPAddress ip = webSocket.remoteIP(id);
+        // Serial.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", id, ip[0], ip[1], ip[2], ip[3], payload);
+        DEBUG("Web socket connected, id = ", id);
 
-            // send message to client
-            wsSend(id, "Connected to ");
-            wsSend(id, ap_ssid);
-            break;
+        // send message to client
+        wsSend(id, "Connected to ");
+        wsSend(id, ap_ssid);
+        break;
+      }
+    case WStype_BIN:
+      DEBUG("On connection #", id)
+      DEBUG("  got binary of length ", length);
+      for (int i = 0; i < length; i++)
+        DEBUG("    char : ", payload[i]);
+
+      if (payload[0] == '~')
+        drive(180 - payload[1], payload[2]);
+
+
+    case WStype_TEXT:
+      DEBUG("On connection #", id)
+      DEBUG("  got text: ", (char *)payload);
+
+      if (payload[0] == '#') {
+        if (payload[1] == 'C') {
+          LED_ON;
+//          wsSend(id, "Hello world! Testing send data");
         }
-        case WStype_BIN:
-            DEBUG("On connection #", id)
-            DEBUG("  got binary of length ", length);
-            for (int i = 0; i < length; i++)
-              DEBUG("    char : ", payload[i]);
+        else if (payload[1] == 'F')
+          forward();
+        else if (payload[1] == 'B')
+          backward();
+        else if (payload[1] == 'L')
+          left();
+        else if (payload[1] == 'R')
+          right();
+        else if (payload[1] == 'U') {
+          if (payload[2] == 'L')
+            servo_left_ctr -= 1;
+          else if (payload[2] == 'R')
+            servo_right_ctr += 1;
+          char tx[20] = "Zero @ (xxx, xxx)";
+          sprintf(tx, "Zero @ (%3d, %3d)", servo_left_ctr, servo_right_ctr);
+          wsSend(id, tx);
+        }
+        else if (payload[1] == 'D') {
+          if (payload[2] == 'L')
+            servo_left_ctr += 1;
+          else if (payload[2] == 'R')
+            servo_right_ctr -= 1;
+          char tx[20] = "Zero @ (xxx, xxx)";
+          sprintf(tx, "Zero @ (%3d, %3d)", servo_left_ctr, servo_right_ctr);
+          wsSend(id, tx);
+//          sendMagnetometerData(id);
+//          sendLidarData(id);
+        }
+        else
+          stop();
+      }
 
-            if (payload[0] == '~') 
-              drive(180-payload[1], payload[2]);
-
-        case WStype_TEXT:
-            DEBUG("On connection #", id)
-            DEBUG("  got text: ", (char *)payload);
-
-            if (payload[0] == '#') {
-                if(payload[1] == 'C') {
-                  LED_ON;
-                  wsSend(id, "Hello world! Testing send data");
-                }
-                else if(payload[1] == 'F') 
-                  forward();
-                else if(payload[1] == 'B') 
-                  backward();
-                else if(payload[1] == 'L') 
-                  left();
-                else if(payload[1] == 'R') 
-                  right();
-                else if(payload[1] == 'U') {
-                  if(payload[2] == 'L') 
-                    servo_left_ctr -= 1;
-                  else if(payload[2] == 'R') 
-                    servo_right_ctr += 1;
-                  char tx[20] = "Zero @ (xxx, xxx)";
-                  sprintf(tx, "Zero @ (%3d, %3d)", servo_left_ctr, servo_right_ctr);
-                  wsSend(id, tx);
-                  sendMagnetometerData(id);
-                  sendLidarData(id);
-                }
-                else if(payload[1] == 'D') {
-                  if(payload[2] == 'L') 
-                    servo_left_ctr += 1;
-                  else if(payload[2] == 'R') 
-                    servo_right_ctr -= 1;
-                  char tx[20] = "Zero @ (xxx, xxx)";
-                  sprintf(tx, "Zero @ (%3d, %3d)", servo_left_ctr, servo_right_ctr);
-                  wsSend(id, tx);
-                  sendMagnetometerData(id);
-                  sendLidarData(id);
-                }
-                else 
-                  stop();
-            }
-
-            break;
-    }
+      break;
+  }
+     sendMagnetometerData(id);
+    sendLidarData(id);
 }

@@ -78,7 +78,6 @@ void loop()
   // ::: Counter :::
   
   // Display data counter
-  Serial.print("BANANANANANA");
   Serial.print (cpt++,DEC);
   Serial.print ("\t");
   
@@ -94,9 +93,7 @@ void loop()
   uint8_t ii = 0;
   do
   {
-    
-    Serial.print("  -- sensor broke :( \n");
-    I2Cread(MAG_ADDRESS,0x02,1,&ST1);
+     I2Cread(MAG_ADDRESS,0x02,1,&ST1);
   }
   while (!(ST1&0x01));
 
@@ -112,7 +109,8 @@ void loop()
   int16_t mz=(Mag[5]<<8 | Mag[4]);
 
   float heading = atan2(mx, my);
-
+  heading /= 0.3;
+  heading -= 0.1;
   // Once you have your heading, you must then add your 'Declination Angle',
   // which is the 'Error' of the magnetic field in your location. Mine is 0.0404 
   // Find yours here: http://www.magnetic-declination.com/
@@ -122,11 +120,11 @@ void loop()
   heading += declinationAngle;
 
   // Correct for when signs are reversed.
-  if(heading < 0)
+  while(heading < 0)
     heading += 2*PI;
 
   // Check for wrap due to addition of declination.
-  if(heading > 2*PI)
+  while(heading > 2*PI)
     heading -= 2*PI;
 
   // Convert radians to degrees for readability.
