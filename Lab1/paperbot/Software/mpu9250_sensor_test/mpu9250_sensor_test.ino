@@ -78,8 +78,7 @@ void loop()
   // ::: Counter :::
   
   // Display data counter
-  Serial.print (cpt++,DEC);
-  Serial.print ("\t");
+
   
   // _____________________
   // :::  Magnetometer ::: 
