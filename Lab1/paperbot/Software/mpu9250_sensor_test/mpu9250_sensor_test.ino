@@ -130,21 +130,12 @@ void loop()
   // Convert radians to degrees for readability.
   float headingDegrees = heading * 180/PI; 
 
-  Serial.print("\rHeading:\t");
-  Serial.print(heading);
-  Serial.print(" Radians   \t");
-  Serial.print(headingDegrees);
-  Serial.println(" Degrees   \t");
-
-  Serial.print ("Magnetometer readings:"); 
-  Serial.print ("\tMx:");
-  Serial.print (mx); 
-  Serial.print ("\tMy:");
+  Serial.print (mx);
+  Serial.print (",");
   Serial.print (my);
-  Serial.print ("\tMz:");
-  Serial.print (mz);  
-  Serial.println ("\t");
-  
+  Serial.print (",");
+  Serial.println (mz);
+
   
   // End of line
   delay(100); 
