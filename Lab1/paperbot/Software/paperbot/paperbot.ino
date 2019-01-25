@@ -294,9 +294,14 @@ void magcalMPU9250(float * dest1, float * dest2)
  delay(4000);
 
  sample_count = 400;
-
- for(ii = 0; ii < sample_count; ii++) {
+  uint8_t ST1;
   uint8_t Mag[7];
+ for(ii = 0; ii < sample_count; ii++) {
+  do
+  {
+    I2Cread(MAG_ADDRESS, 0x02, 1, &ST1);
+  }
+  while (!(ST1 & 0x01));
   I2Cread(MAG_ADDRESS, 0x03, 7, Mag);
   
   mag_temp[0] = (Mag[1] << 8 | Mag[0]);
@@ -304,8 +309,12 @@ void magcalMPU9250(float * dest1, float * dest2)
   mag_temp[2] = (Mag[5] << 8 | Mag[4]);
 
   for (int jj = 0; jj < 3; jj++) {
-    if(mag_temp[jj] > mag_max[jj]) mag_max[jj] = mag_temp[jj];
-    if(mag_temp[jj] < mag_min[jj]) mag_min[jj] = mag_temp[jj];
+    if(mag_temp[jj] > mag_max[jj]){
+      mag_max[jj] = mag_temp[jj];
+    }
+    if(mag_temp[jj] < mag_min[jj]){
+      mag_min[jj] = mag_temp[jj];
+    }
   }
   delay(10);
 }
@@ -321,25 +330,25 @@ void magcalMPU9250(float * dest1, float * dest2)
  MPU9250magCalibration[1] = 1;
  MPU9250magCalibration[2] = 1;
 
- dest1[0] = (float) mag_bias[0]*MPU9250mRes*MPU9250magCalibration[0];  // save mag biases in G for main program
- dest1[1] = (float) mag_bias[1]*MPU9250mRes*MPU9250magCalibration[1];   
- dest1[2] = (float) mag_bias[2]*MPU9250mRes*MPU9250magCalibration[2];  
+ dest1[0] = (float) mag_bias[0]//*MPU9250mRes*MPU9250magCalibration[0];  // save mag biases in G for main program
+ dest1[1] = (float) mag_bias[1]//*MPU9250mRes*MPU9250magCalibration[1];   
+ dest1[2] = (float) mag_bias[2]//*MPU9250mRes*MPU9250magCalibration[2];  
    
 // Get soft iron correction estimate
  mag_scale[0]  = (mag_max[0] - mag_min[0]+2)/2;  // get average x axis max chord length in counts
  mag_scale[1]  = (mag_max[1] - mag_min[1]+2)/2;  // get average y axis max chord length in counts
  mag_scale[2]  = (mag_max[2] - mag_min[2]+2)/2;  // get average z axis max chord length in counts
-
+/*
  float avg_rad = (mag_scale[0] + mag_scale[1] + mag_scale[2]) / 3;
  Serial.println(avg_rad);
  Serial.println(mag_max[0]);
  Serial.println(mag_min[0]);
+ */
+ dest2[0] = ((float)mag_scale[0]);
+ dest2[1] = ((float)mag_scale[1]);
+ dest2[2] = ((float)mag_scale[2]);
  
- dest2[0] = avg_rad/((float)mag_scale[0]);
- dest2[1] = avg_rad/((float)mag_scale[1]);
- dest2[2] = avg_rad/((float)mag_scale[2]);
- 
- Serial.println("CALIBRATION VALUES!!!!");
+ Serial.println("CALIBRATION VALUES!!!! (mx-d2[0])/d1[0] for accurate value, scale to unit sphere");
  char text[200];
  sprintf(text, "Bias: %f %f %f", dest1[0], dest1[1], dest1[2]);
  Serial.println(text);
@@ -375,11 +384,11 @@ void sendMagnetometerData(uint8_t id) {
   int16_t mz = (Mag[5] << 8 | Mag[4]);
 
   float mag[3];
-  mag[0] = mx * m_scale[0] - m_bias[0];
-  mag[1] = my * m_scale[1] - m_bias[1];
-  mag[2] = mz * m_scale[2] - m_bias[2];
+  mag[0] = (mx - m_bias[0])/m_scale[0];
+  mag[1] = (my - m_bias[1])/m_scale[1];
+  mag[2] = (mz - m_bias[2])/m_scale[2];
 
-  float heading = atan2(mx, my);
+  float heading = atan2(mag[0], mag[1]);
 
   // Once you have your heading, you must then add your 'Declination Angle',
   // which is the 'Error' of the magnetic field in your location. Mine is 0.0404
