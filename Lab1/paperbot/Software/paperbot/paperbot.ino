@@ -93,10 +93,6 @@ char* mDNS_name = "paperbot";
 String html;
 String css;
 
-float m_bias[3] = {1, 1, 1};
-float m_scale[3] = {1, 1, 1};
-
-  
 void setup() {
   setupPins();
 
@@ -126,9 +122,33 @@ void setup() {
   setupMDNS(mDNS_name);
 
 
-  magcalMPU9250(m_bias, m_scale);
+//  magcalMPU9250(m_bias, m_scale);
   
   stop();
+}
+
+void I2Cread(uint8_t Address, uint8_t Register, uint8_t Nbytes, uint8_t* Data)
+{
+  // Set register address
+  Wire.beginTransmission(Address);
+  Wire.write(Register);
+  Wire.endTransmission();
+
+  // Read Nbytes
+  Wire.requestFrom(Address, Nbytes);
+  uint8_t index = 0;
+  while (Wire.available())
+    Data[index++] = Wire.read();
+}
+
+
+void I2CwriteByte(uint8_t Address, uint8_t Register, uint8_t Data)
+{
+  // Set register address
+  Wire.beginTransmission(Address);
+  Wire.write(Register);
+  Wire.write(Data);
+  Wire.endTransmission();
 }
 
 void loop() {
@@ -173,10 +193,75 @@ void right() {
 }
 
 
+///
+// Setup sensors
+///
+void setupSensors(){
+// Lidar Sensors:
+  pinMode(D3, OUTPUT);
+  pinMode(D4, OUTPUT);
+  digitalWrite(D7, LOW);
+  digitalWrite(D8, LOW);
 
-//
-// Setup //
-//
+  delay(500);
+  Wire.begin(SDA_PORT, SCL_PORT);
+
+  Serial.begin (115200);
+
+  digitalWrite(D3, HIGH);
+  delay(150);
+  Serial.println("00");
+
+  sensor.init(true);
+  Serial.println("01");
+  delay(100);
+  sensor.setAddress((uint8_t)22);
+
+  digitalWrite(D4, HIGH);
+  delay(150);
+  sensor2.init(true);
+  Serial.println("03");
+  delay(100);
+  sensor2.setAddress((uint8_t)25);
+  Serial.println("04");
+
+  Serial.println("addresses set");
+
+  Serial.println ("I2C scanner. Scanning ...");
+  byte count = 0;
+
+  for (byte i = 1; i < 120; i++)
+  {
+
+    Wire.beginTransmission (i);
+    if (Wire.endTransmission () == 0)
+    {
+      Serial.print ("Found address: ");
+      Serial.print (i, DEC);
+      Serial.print (" (0x");
+      Serial.print (i, HEX);
+      Serial.println (")");
+      count++;
+      delay (1);  // maybe unneeded?
+    } // end of good response
+  } // end of for loop
+  Serial.println ("Done.");
+  Serial.print ("Found ");
+  Serial.print (count, DEC);
+  Serial.println (" device(s).");
+
+  delay(3000);
+
+  // Sensor Magnetometer
+  // Set by pass mode for the magnetometers
+  I2CwriteByte(MPU9250_ADDRESS, 0x37, 0x02);
+
+  // Request first magnetometer single measurement
+  I2CwriteByte(MAG_ADDRESS, 0x0A, 0x01);
+  //end sensors
+}
+
+
 void setupPins() {
   // setup Serial, LEDs and Motors
   Serial.begin(115200);
@@ -229,7 +314,8 @@ void webSocketEvent(uint8_t id, WStype_t type, uint8_t * payload, size_t length)
       if (payload[0] == '#') {
         if (payload[1] == 'C') {
           LED_ON;
-//          wsSend(id, "Hello world! Testing send data");
+          sendMagnetometerData(id);
+          sendLidarData(id);
         }
         else if (payload[1] == 'F')
           forward();

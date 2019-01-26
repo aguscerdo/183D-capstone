@@ -29,7 +29,7 @@ def plotter(path):
     x_scale = (xmax - xmin) / 2
     y_scale = (ymax - ymin) / 2
 
-    print('x_bias: {}, x_scale; y_bias: {}, y_scale: {}'.format(x_off, x_scale, y_off, y_scale))
+    print('x_bias: {}, x_scale: {}; y_bias: {}, y_scale: {}'.format(x_off, x_scale, y_off, y_scale))
 
 
 if __name__ == '__main__':
