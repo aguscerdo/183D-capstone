@@ -5,7 +5,7 @@ float m_bias[2] = {6.0, 81.0};
 float m_scale[2] = {40.0, 41.0};
 
 //sends magnetometer data to webpage
-void sendMagnetometerData(uint8_t id) {
+float sendMagnetometerData(uint8_t id) {
   // Request first magnetometer single measurement
   I2CwriteByte(MAG_ADDRESS, 0x0A, 0x01);
 
@@ -54,85 +54,72 @@ void sendMagnetometerData(uint8_t id) {
   sprintf(tx, "Mx,My: (%d, %d). Deg: (%f)\0", mx, my, headingDegrees);
   Serial.write(tx);
   wsSend(id, tx);
+
+  return headingDegrees;
 }
 
 
 // ---------------------------------------------------------------------------
 
 
-//
-////calibration for magnetometer
-//void magcalMPU9250(float * dest1, float * dest2)
-//{
-// uint16_t ii = 0, sample_count = 0;
-// int32_t mag_bias[3] = {0, 0, 0}, mag_scale[3] = {0, 0, 0};
-// int16_t mag_max[3] = {-32767, -32767, -32767}, mag_min[3] = {32767, 32767, 32767}, mag_temp[3] = {0, 0, 0};
-// float MPU9250mRes = 10.*4912./32760.;
-//
-// Serial.println("Mag Calibration: Wave device in a figure eight until done!");
-// delay(4000);
-//
-// sample_count = 400;
-//  uint8_t ST1;
-//  uint8_t Mag[7];
-// for(ii = 0; ii < sample_count; ii++) {
-//  do
-//  {
-//    I2Cread(MAG_ADDRESS, 0x02, 1, &ST1);
-//  }
-//  while (!(ST1 & 0x01));
-//  I2Cread(MAG_ADDRESS, 0x03, 7, Mag);
-//
-//  mag_temp[0] = (Mag[1] << 8 | Mag[0]);
-//  mag_temp[1] = (Mag[3] << 8 | Mag[2]);
-//  mag_temp[2] = (Mag[5] << 8 | Mag[4]);
-//
-//  for (int jj = 0; jj < 3; jj++) {
-//    if(mag_temp[jj] > mag_max[jj]){
-//      mag_max[jj] = mag_temp[jj];
-//    }
-//    if(mag_temp[jj] < mag_min[jj]){
-//      mag_min[jj] = mag_temp[jj];
-//    }
-//  }
-//  delay(10);
-// }
-//
-//// Get hard iron correction
-// mag_bias[0]  = (mag_max[0] + mag_min[0])/2;  // get average x mag bias in counts
-// mag_bias[1]  = (mag_max[1] + mag_min[1])/2;  // get average y mag bias in counts
-// mag_bias[2]  = (mag_max[2] + mag_min[2])/2;  // get average z mag bias in counts
-//
-// float MPU9250magCalibration[3];
-// MPU9250magCalibration[0] = 1;
-// MPU9250magCalibration[1] = 1;
-// MPU9250magCalibration[2] = 1;
-//
-// dest1[0] = (float) mag_bias[0]//*MPU9250mRes*MPU9250magCalibration[0];  // save mag biases in G for main program
-// dest1[1] = (float) mag_bias[1]//*MPU9250mRes*MPU9250magCalibration[1];
-// dest1[2] = (float) mag_bias[2]//*MPU9250mRes*MPU9250magCalibration[2];
-//
-//// Get soft iron correction estimate
-// mag_scale[0]  = (mag_max[0] - mag_min[0]+2)/2;  // get average x axis max chord length in counts
-// mag_scale[1]  = (mag_max[1] - mag_min[1]+2)/2;  // get average y axis max chord length in counts
-// mag_scale[2]  = (mag_max[2] - mag_min[2]+2)/2;  // get average z axis max chord length in counts
-///*
-// float avg_rad = (mag_scale[0] + mag_scale[1] + mag_scale[2]) / 3;
-// Serial.println(avg_rad);
-// Serial.println(mag_max[0]);
-// Serial.println(mag_min[0]);
-// */
-// dest2[0] = ((float)mag_scale[0]);
-// dest2[1] = ((float)mag_scale[1]);
-// dest2[2] = ((float)mag_scale[2]);
-//
-// Serial.println("CALIBRATION VALUES!!!! (mx-d2[0])/d1[0] for accurate value, scale to unit sphere");
-// char text[200];
-// sprintf(text, "Bias: %f %f %f", dest1[0], dest1[1], dest1[2]);
-// Serial.println(text);
-// sprintf(text, "Scale: %f %f %f", dest2[0], dest2[1], dest2[2]);
-// Serial.println(text);
-//
-// Serial.println("---------------------------------------------");
-//}
-//
+
+//calibration for magnetometer
+void magcalMPU9250()
+{
+ uint16_t ii = 0, sample_count = 0;
+ int16_t mag_max[3] = {-10000, -10000}, mag_min[3] = {10000, 10000}, mag_temp[2] = {0, 0};
+
+ Serial.println("Mag Calibration: Wave device in a figure eight until done!");
+
+ sample_count = 400;
+  uint8_t ST1;
+ for(ii = 0; ii < sample_count; ii++) {
+  I2CwriteByte(MAG_ADDRESS, 0x0A, 0x01);
+
+
+  do
+  {
+    I2Cread(MAG_ADDRESS, 0x02, 1, &ST1);
+  }
+  while (!(ST1 & 0x01));
+  uint8_t Mag[7];
+
+  I2Cread(MAG_ADDRESS, 0x03, 7, Mag);
+
+  mag_temp[0] = (Mag[1] << 8 | Mag[0]);
+  mag_temp[1] = (Mag[3] << 8 | Mag[2]);
+
+    if(mag_temp[0] > mag_max[0]){
+      mag_max[0] = mag_temp[0];
+    }
+    if(mag_temp[0] < mag_min[0]){
+      mag_min[0] = mag_temp[0];
+    }    
+    
+    if(mag_temp[1] > mag_max[1]){
+      mag_max[1] = mag_temp[1];
+    }
+    if(mag_temp[1] < mag_min[1]){
+      mag_min[1] = mag_temp[1];
+    }
+    delay(25);
+ }
+
+// Get hard iron correction
+ m_bias[0]  = float(mag_max[0] + mag_min[0])/2.0;  // get average x mag bias in counts
+ m_bias[1]  = float(mag_max[1] + mag_min[1])/2.0;  // get average y mag bias in counts
+
+// Get soft iron correction estimate
+ m_scale[0]  = float(mag_max[0] - mag_min[0])/2.0;  // get average x axis max chord length in counts
+ m_scale[1]  = float(mag_max[1] - mag_min[1])/2.0;  // get average y axis max chord length in counts
+
+
+ char text[200];
+ sprintf(text, "Ms %d %d %d %d", mag_max[0], mag_min[0], mag_max[1], mag_min[1]);
+ Serial.println(text);
+ sprintf(text, "Bias: %f %f", m_bias[0], m_bias[1]);
+ Serial.println(text);
+ sprintf(text, "Scale: %f %f", m_scale[0], m_scale[1]);
+ Serial.println(text);
+ Serial.println("---------------------------------------------");
+}

@@ -1,39 +1,4 @@
-/*
-  Wireless Servo Control, with ESP as Access Point
-
-  Usage:
-    Connect phone or laptop to "ESP_XXXX" wireless network, where XXXX is the ID of the robot
-    Go to 192.168.4.1.
-    A webpage with four buttons should appear. Click them to move the robot.
-
-  Installation:
-    In Arduino, go to Tools > ESP8266 Sketch Data Upload to upload the files from ./data to the ESP
-    Then, in Arduino, compile and upload sketch to the ESP
-
-  Requirements:
-    Arduino support for ESP8266 board
-      In Arduino, add URL to Files > Preferences > Additional Board Managers URL.
-      See https://learn.sparkfun.com/tutorials/esp8266-thing-hookup-guide/installing-the-esp8266-arduino-addon
-
-    Websockets library
-      To install, Sketch > Include Library > Manage Libraries... > Websockets > Install
-      https://github.com/Links2004/arduinoWebSockets
-
-    ESP8266FS tool
-      To install, create "tools" folder in Arduino, download, and unzip. See
-      https://github.com/esp8266/Arduino/blob/master/doc/filesystem.md#uploading-files-to-file-system
-
-  Hardware:
-    NodeMCU Amica DevKit Board (ESP8266 chip)
-    Motorshield for NodeMCU
-    2 continuous rotation servos plugged into motorshield pins D1, D2
-    Ultra-thin power bank
-    Paper chassis
-
-*/
-
 #include <Arduino.h>
-
 #include <Hash.h>
 #include <FS.h>
 #include <ESP8266WiFi.h>
@@ -76,7 +41,6 @@ Servo servo_left;
 Servo servo_right;
 int servo_left_ctr = 90;
 int servo_right_ctr = 90;
-
 
 // WiFi AP parameters
 char ap_ssid[13];
@@ -122,7 +86,7 @@ void setup() {
   setupMDNS(mDNS_name);
 
 
-//  magcalMPU9250(m_bias, m_scale);
+  magcalMPU9250();
   
   stop();
 }
@@ -278,10 +242,9 @@ void setupPins() {
 
 }
 
-
-
+int lidars[2] = {0, 0};
 void webSocketEvent(uint8_t id, WStype_t type, uint8_t * payload, size_t length) {
-
+  
   switch (type) {
     case WStype_DISCONNECTED:
       DEBUG("Web socket disconnected, id = ", id);
@@ -315,7 +278,7 @@ void webSocketEvent(uint8_t id, WStype_t type, uint8_t * payload, size_t length)
         if (payload[1] == 'C') {
           LED_ON;
           sendMagnetometerData(id);
-          sendLidarData(id);
+          sendLidarData(id, lidars);
         }
         else if (payload[1] == 'F')
           forward();
@@ -342,8 +305,6 @@ void webSocketEvent(uint8_t id, WStype_t type, uint8_t * payload, size_t length)
           char tx[20] = "Zero @ (xxx, xxx)";
           sprintf(tx, "Zero @ (%3d, %3d)", servo_left_ctr, servo_right_ctr);
           wsSend(id, tx);
-//          sendMagnetometerData(id);
-//          sendLidarData(id);
         }
         else
           stop();
@@ -351,6 +312,6 @@ void webSocketEvent(uint8_t id, WStype_t type, uint8_t * payload, size_t length)
 
       break;
   }
-     sendMagnetometerData(id);
-    sendLidarData(id);
+    sendMagnetometerData(id);
+    sendLidarData(id, lidars);
 }
