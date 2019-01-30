@@ -116,7 +116,7 @@
     var wsRx = document.getElementById("wsRx");
     var wsTx = document.getElementById("wsTx");
     function rxLog(text) {
-      wsRx.innerHTML = text + wsRx.innerHTML.split("<br>").slice(0, 4).join("<br>") ;
+      wsRx.innerHTML = text + wsRx.innerHTML;
     }
     function txLog(text) {
       wsTx.innerHTML = text + wsTx.innerHTML.split("<br>").slice(0, 4).join("<br>") ;
