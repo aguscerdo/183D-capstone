@@ -11,7 +11,33 @@ float I[9]; //3x3 Identity
 float Q[9]; // noise in f
 float R[9]; // noise in h
 
+float Box[4][2]; //TL TR BR BL
+
 // TO DO: implement f, F, h, H. convert to matrices.
+
+//all these functions part of h(.)
+float distToLidarR(float dist){
+  return dist; // should be system3 model
+}
+float distToLidarF(float dist){
+  return dist; //should be system3 model
+}
+float angleToMagnetometer(float theta){
+   return theta; // should be system3 model
+}
+float* zerosOfLine(float* p1, float* p2){
+  // y = (x-p1.x) * (p2.y - p1.y)/(p2.x - p1.x) + p1.y
+  // x = 0; y = 
+  float y = (-p1[0]) * (p2[1] - p1[1])/(p2[0] - p1[0]) + p1[1]
+  // x = (y-p1.y) * (p2.x - p1.x)/(p2.y - p1.y) + p1.x
+  // y = 0; x = 
+  float x = (-p1[1]) * (p2[0] - p1[0])/(p2[1] - p1[1]) + p1[0]
+  //z[0] = x, z[1] = y
+  float z[2];
+  z[0] = x;
+  z[1] = y;
+  return z;
+}
 
 //Function f
 float* f(float* X, float* U){
@@ -20,7 +46,44 @@ float* f(float* X, float* U){
 
 //Function h
 float* h(float* X){
-  return X;
+  float newBox[4][2];
+  float x = X[0];
+  float y = X[1];
+  float theta = X[2];
+  // Translate all box points
+  for (int i =  0; i < 4; i++){
+    newBox[i][0] = Box[i][0] - x;
+    newBox[i][1] = Box[i][1] - y;
+  }
+  // Rotate all points 
+  // Rotation matrix R(-theta)
+  float c = cos(theta);
+  float s = cos(theta);
+  float R[4];
+  R[0] = c; R[1] = s;
+  R[2] = -s; R[3] = c;
+  for (int i =  0; i < 4; i++){
+    newBox[i] = R*Box[i]
+  }
+  // Find zeros with y = 0 x > 0 and and x = 0  y > 0
+  float z[2];
+  float xDist = -1; //if they stay -1, something went wrong.
+  float yDist = -1;
+  for (int i = 0; i < 4; i++){
+    z = zerosOfLine(newBox[i], newBox[(i+1) % 4] );
+    if (z[1] > 0){
+      yDist = z[1];
+    }
+    if (z[0] > 0){
+      xDist = z[0];
+    }
+  }
+  float newState[3];
+  newState[0] = distToLidarR(xDist);
+  newState[1] = distToLidarF(yDist);
+  newState[2] = angleToMagnetometer(theta);
+  
+  return newState;
 }
 
 //Jacobian of f
@@ -30,6 +93,7 @@ float* F(float* X, float* U){
 
 //Jacobian of h
 float* H(float* X){
+  
   return X;
 }
 
