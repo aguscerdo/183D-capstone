@@ -57,7 +57,8 @@ void f(float* X, float* U){
 }
 
 //Function h, takes in state X and returns sensorData
-void h(float* X, float* sensorData){
+//Also gives JH, jacobian of h.
+void stateToOutput(float* X, float* sensorData, float* JacH){
   float newBox[4][2];
   float x = X[0];
   float y = X[1];
@@ -86,15 +87,31 @@ void h(float* X, float* sensorData){
     zerosOfLine(newBox[i], newBox[(i+1) % 4], z);
     if (z[1] > 0){
       yDist = z[1];
+      //JacH[3] = dLF/dx = dy/dx for this line;
+      //this line: y = yDist + ax and fits point newBox[i]
+      //a = (y1-yDist) / x1
+      JacH[3] = (newBox[i][1] - yDist) / newBox[i][0];
     }
     if (z[0] > 0){
       xDist = z[0];
+      //JacH[1] = dLR/dy = dx/dy for this line; 
+      //this line: x = xDist + by and fits point newBox[i]
+      //b = (x1-xDist) / y1
+      JacH[1] = (newBox[i][0] - xDist) / newBox[i][1];
     }
   }
   sensorData[0] = distToLidarR(xDist);
   sensorData[1] = distToLidarF(yDist);
   sensorData[2] = angleToMagnetometer(theta);
- 
+// M = magnetometer, LF = lidar front, LR = lidar right
+  JacH[6] = 0; //dM/dx
+  JacH[7] = 0;  //dM/dy
+  JacH[8] = 1; // dM/dtheta = derivative of angleToMagnetometer()
+  JacH[0] = 1; // dLR/dx = derivative of distToLidarR()
+  JacH[4] = 1; // dLF/dy = derivative of distToLidarF()
+
+
+
   return ;
 }
 
@@ -103,11 +120,6 @@ void F(float* X, float* U, float* JacF){
   return ;
 }
 
-//Jacobian of h, takes in X retuns jacobian JacH
-void H(float* X, float* JacH){
- 
-  return ;
-}
 
 //
 void kalman(float pwmL, float pwmR, float lidarF, float lidarR, float mag) {
@@ -128,9 +140,8 @@ void kalman(float pwmL, float pwmR, float lidarF, float lidarR, float mag) {
   MatrixMath::Transpose(JF,3,3, tmp1);
   MatrixMath::Multiply(tmp0, tmp1, 3,3,3, tmp2);
   MatrixMath::Add(tmp2, Q, 3,3, cov_est);
-  //get JH, h
-  H(X_est, JH);
-  h(X_est, z_est);
+  //get JH, h   //H(X_est, JH);//h(X_est, z_est);
+  stateToOutput(X_est, z_est, JH);
   //update
   //innovation = z - z_est; 
   MatrixMath::Subtract(z, z_est, 3,1, innovation);
