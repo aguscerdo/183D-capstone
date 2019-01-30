@@ -25,7 +25,8 @@ float distToLidarF(float dist){
 float angleToMagnetometer(float theta){
    return theta; // should be system3 model
 }
-float* zerosOfLine(float* p1, float* p2){
+//takes in p1, p2, gives zeros (z1,0), (0,z2)
+void zerosOfLine(float* p1, float* p2, float* z){
   // y = (x-p1.x) * (p2.y - p1.y)/(p2.x - p1.x) + p1.y
   // x = 0; y = 
   float y = (-p1[0]) * (p2[1] - p1[1])/(p2[0] - p1[0]) + p1[1]
@@ -33,19 +34,18 @@ float* zerosOfLine(float* p1, float* p2){
   // y = 0; x = 
   float x = (-p1[1]) * (p2[0] - p1[0])/(p2[1] - p1[1]) + p1[0]
   //z[0] = x, z[1] = y
-  float z[2];
   z[0] = x;
   z[1] = y;
-  return z;
+  return ;
 }
 
-//Function f
-float* f(float* X, float* U){
-  return X;
+//Function f, takes in X, U and updates X
+void f(float* X, float* U){
+  return ;
 }
 
-//Function h
-float* h(float* X){
+//Function h, takes in state X and returns sensorData
+void h(float* X, float* sensorData){
   float newBox[4][2];
   float x = X[0];
   float y = X[1];
@@ -63,14 +63,15 @@ float* h(float* X){
   R[0] = c; R[1] = s;
   R[2] = -s; R[3] = c;
   for (int i =  0; i < 4; i++){
-    newBox[i] = R*Box[i]
+    newBox[i][0] = R[0]*Box[i][0] + R[1]*Box[i][1];
+    newBox[i][1] = R[2]*Box[i][0] + R[3]*Box[i][1];
   }
   // Find zeros with y = 0 x > 0 and and x = 0  y > 0
-  float z[2];
+  float* z;
   float xDist = -1; //if they stay -1, something went wrong.
   float yDist = -1;
   for (int i = 0; i < 4; i++){
-    z = zerosOfLine(newBox[i], newBox[(i+1) % 4] );
+    zerosOfLine(newBox[i], newBox[(i+1) % 4], z);
     if (z[1] > 0){
       yDist = z[1];
     }
@@ -78,23 +79,22 @@ float* h(float* X){
       xDist = z[0];
     }
   }
-  float newState[3];
-  newState[0] = distToLidarR(xDist);
-  newState[1] = distToLidarF(yDist);
-  newState[2] = angleToMagnetometer(theta);
-  
-  return newState;
+  sensorData[0] = distToLidarR(xDist);
+  sensorData[1] = distToLidarF(yDist);
+  sensorData[2] = angleToMagnetometer(theta);
+ 
+  return ;
 }
 
-//Jacobian of f
-float* F(float* X, float* U){
-  return X;
+//Jacobian of f, takes in X, U returns Jacobian JacF
+void F(float* X, float* U, float* JacF){
+  return ;
 }
 
-//Jacobian of h
-float* H(float* X){
-  
-  return X;
+//Jacobian of h, takes in X retuns jacobian JacH
+void H(float* X, float* JacH){
+ 
+  return ;
 }
 
 //
@@ -108,7 +108,7 @@ void kalman(float pwmL, float pwmR, float lidarF, float lidarR, float mag) {
   z[1] = lidarR;
   z[2] = mag;
   //get JF
-  JF = F(X_est, U);
+  F(X_est, U, JF);
   //predict
   X_est = f(X_est, U);
   cov_est = JF*cov_est*JF.T+Q;
