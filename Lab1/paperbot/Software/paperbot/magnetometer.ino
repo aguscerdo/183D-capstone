@@ -1,8 +1,12 @@
 #include <Wire.h>
 #include <VL53L0X.h>
 
-float m_bias[2] = {6.0, 81.0};
-float m_scale[2] = {40.0, 41.0};
+float m_bias[2] = {-1, -58.500};
+float m_scale[2] = {23.0, 24.5};
+
+//Bias: -1.000000 58.500000
+//Scale: 23.000000 24.500000
+
 
 //sends magnetometer data to webpage
 float sendMagnetometerData(uint8_t id) {
@@ -73,6 +77,7 @@ void magcalMPU9250()
 
  sample_count = 400;
   uint8_t ST1;
+  LED_ON;
  for(ii = 0; ii < sample_count; ii++) {
   I2CwriteByte(MAG_ADDRESS, 0x0A, 0x01);
 
@@ -104,6 +109,7 @@ void magcalMPU9250()
     }
     delay(25);
  }
+ LED_OFF;
 
 // Get hard iron correction
  m_bias[0]  = float(mag_max[0] + mag_min[0])/2.0;  // get average x mag bias in counts

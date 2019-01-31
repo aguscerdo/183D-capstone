@@ -7,13 +7,8 @@ float cov_innovation[9]; //S
 float gain[9]; //K
 float JF[9]; //Jacobian of f, xk = f(x_k-1, uk)
 float JH[9]; //Jacobian of j, zk = h(xk)
-float I[9]; //3x3 Identity
-for (int i = 0; i < 9; i++){
-  I[i] = 0;
-}
-I[0] = 1;
-I[4] = 1;
-I[8] = 1;
+float I[9] = {1,0,0,0,1,0,0,0,1}; //3x3 Identity
+
 float Q[9]; // noise in f
 float R[9]; // noise in h
 
@@ -22,6 +17,7 @@ float tmp1[9]; // temp/intermediary
 float tmp2[9]; // temp/intermediary
 float tmp3[9]; // temp/intermediary
 
+MatrixMath M;
 
 float Box[4][2]; //TL TR BR BL
 
@@ -41,10 +37,10 @@ float angleToMagnetometer(float theta){
 void zerosOfLine(float* p1, float* p2, float* z){
   // y = (x-p1.x) * (p2.y - p1.y)/(p2.x - p1.x) + p1.y
   // x = 0; y = 
-  float y = (-p1[0]) * (p2[1] - p1[1])/(p2[0] - p1[0]) + p1[1]
+  float y = (-p1[0]) * (p2[1] - p1[1])/(p2[0] - p1[0]) + p1[1];
   // x = (y-p1.y) * (p2.x - p1.x)/(p2.y - p1.y) + p1.x
   // y = 0; x = 
-  float x = (-p1[1]) * (p2[0] - p1[0])/(p2[1] - p1[1]) + p1[0]
+  float x = (-p1[1]) * (p2[0] - p1[0])/(p2[1] - p1[1]) + p1[0];
   //z[0] = x, z[1] = y
   z[0] = x;
   z[1] = y;
@@ -52,7 +48,7 @@ void zerosOfLine(float* p1, float* p2, float* z){
 }
 
 //Function f, takes in X, U and updates X
-void f(float* X, float* U){
+void stateUpdate(float* X, float* U){
   return ;
 }
 
@@ -69,7 +65,7 @@ void stateToOutput(float* X, float* sensorData, float* JacH){
     newBox[i][1] = Box[i][1] - y;
   }
   // Rotate all points 
-  // Rotation matrix R(-theta)
+  // Rotation M. R(-theta)
   float c = cos(theta);
   float s = cos(theta);
   float R[4];
@@ -116,7 +112,7 @@ void stateToOutput(float* X, float* sensorData, float* JacH){
 }
 
 //Jacobian of f, takes in X, U returns Jacobian JacF
-void F(float* X, float* U, float* JacF){
+void jacobianStateUpdate(float* X, float* U, float* JacF){
   return ;
 }
 
@@ -132,52 +128,52 @@ void kalman(float pwmL, float pwmR, float lidarF, float lidarR, float mag) {
   z[1] = lidarR;
   z[2] = mag;
   //get JF, X
-  F(X_est, U, JF);
-  f(X_est, U);
+  jacobianStateUpdate(X_est, U, JF);
+  stateUpdate(X_est, U);
   //predict
   //cov_est = JF*cov_est*JF.T+Q;
-  MatrixMath::Multiply(JF, cov_est, 3,3,3, tmp0);
-  MatrixMath::Transpose(JF,3,3, tmp1);
-  MatrixMath::Multiply(tmp0, tmp1, 3,3,3, tmp2);
-  MatrixMath::Add(tmp2, Q, 3,3, cov_est);
+  M.Multiply(JF, cov_est, 3,3,3, tmp0);
+  M.Transpose(JF,3,3, tmp1);
+  M.Multiply(tmp0, tmp1, 3,3,3, tmp2);
+  M.Add(tmp2, Q, 3,3, cov_est);
   //get JH, h   //H(X_est, JH);//h(X_est, z_est);
   stateToOutput(X_est, z_est, JH);
   //update
   //innovation = z - z_est; 
-  MatrixMath::Subtract(z, z_est, 3,1, innovation);
+  M.Subtract(z, z_est, 3,1, innovation);
   //cov_innovation = JH*cov_est*JH.T+R; 
-  MatrixMath::Multiply(JH, cov_est, 3,3,3, tmp0);
-  MatrixMath::Transpose(JH,3,3, tmp1);
-  MatrixMath::Multiply(tmp0, tmp1, 3,3,3, tmp2);
-  MatrixMath::Add(tmp2, R, 3,3, cov_innovation);
+  M.Multiply(JH, cov_est, 3,3,3, tmp0);
+  M.Transpose(JH,3,3, tmp1);
+  M.Multiply(tmp0, tmp1, 3,3,3, tmp2);
+  M.Add(tmp2, R, 3,3, cov_innovation);
   //gain = cov_est*JH.T*inv(cov_innovation); 
-  MatrixMath::Multiply(cov_est, tmp1, 3,3,3, tmp0);
+  M.Multiply(cov_est, tmp1, 3,3,3, tmp0);
   //Make sure inverse exists, if it fails try again but with small epsilon away
   int inv = 0;
-  MatrixMath::Copy(cov_innovation, 3,3, tmp1);
-  inv = MatrixMath::Invert(tmp1, 3);
+  M.Copy(cov_innovation, 3,3, tmp1);
+  inv = M.Invert(tmp1, 3);
   float epsilon = 0.001;
   while (inv == 0){
-      MatrixMath::Copy(cov_innovation, 3,3, tmp1);
-      MatrixMath::Copy(I, 3, 3, tmp2);
-      MatrixMath::Scale(tmp2, 3, 3, epsilon);
-      MatrixMath::Add(tmp1, tmp2, 3, 3, tmp3);
-      MatrixMath::Copy(tmp3, 3, 3, tmp1);
-      inv = MatrixMath::Invert(tmp1, 3);
+      M.Copy(cov_innovation, 3,3, tmp1);
+      M.Copy(I, 3, 3, tmp2);
+      M.Scale(tmp2, 3, 3, epsilon);
+      M.Add(tmp1, tmp2, 3, 3, tmp3);
+      M.Copy(tmp3, 3, 3, tmp1);
+      inv = M.Invert(tmp1, 3);
       epsilon = epsilon/2;
   }
-  MatrixMath::Multiply(tmp0, tmp1, 3,3,3, gain);
+  M.Multiply(tmp0, tmp1, 3,3,3, gain);
   //new estimates
   //X_est = X_est+gain*innovation;
-  MatrixMath::Multiply(gain, innovation, 3,3,1, tmp0);
-  MatrixMath::Copy(X_est, 3,1, tmp1);
-  MatrixMath::Add(tmp1, tmp0, 3, 1, X_est);
+  M.Multiply(gain, innovation, 3,3,1, tmp0);
+  M.Copy(X_est, 3,1, tmp1);
+  M.Add(tmp1, tmp0, 3, 1, X_est);
   //cov_est = (I-gain*JH)*cov_est;
-  MatrixMath::Multiply(gain, JH, 3,3,3, tmp0);
-  MatrixMath::Subtract(I, tmp0, 3,3,3, tmp1);
-  MatrixMath::Copy(cov_est, 3,3, tmp2);
-  MatrixMath::Multiply(tmp1, tmp2, 3,3,3, cov_est);
+  M.Multiply(gain, JH, 3,3,3, tmp0);
+  M.Subtract(I, tmp0, 3, 3, tmp1);
+  M.Copy(cov_est, 3,3, tmp2);
+  M.Multiply(tmp1, tmp2, 3,3,3, cov_est);
   
   sprintf(Ktext, "Kalman: (x,y,theta)=(%f,%f,%f)", X_est[0], X_est[1], X_est[2]);
-  Serial.println(Ktext)
+  Serial.println(Ktext);
 }
