@@ -20,7 +20,7 @@ float tmp3[9]; // temp/intermediary
 float pi = 3.1415;
 MatrixMath M;
 
-float Box[4][2]; //TL TR BR BL
+float Box[4][2] = {{0, 500}, {750, 500}, {750, 0}, {0, 0}}; //TL TR BR BL
 
 // TO DO: implement f, F, h, H. convert to matrices.
 
@@ -32,7 +32,14 @@ float distToLidarF(float dist){
   return 0.983*dist+22.4; //should be system3 model
 }
 float angleToMagnetometer(float theta){
-   return (134*atan(pi/180*(theta-200))+374) %360; // should be system3 model
+  float tmp = (134*atan(pi/180*(theta-200))+374);
+    while (tmp > 360) {
+    tmp -= 360;
+  }
+  while (tmp < 0) {
+    tmp += 360; 
+  }
+   return  tmp; // should be system3 model
 }
 //takes in p1, p2, gives zeros (z1,0), (0,z2)
 void zerosOfLine(float* p1, float* p2, float* z){
@@ -52,8 +59,13 @@ void zerosOfLine(float* p1, float* p2, float* z){
 void stateUpdate(float* X, float* U){
   X[0] = X[0] + ((t/2) * cos(X[2]*pi/180) * ((10.72 * pow((U[0] - 90), 0.2) - 1.49) + (11.05 * pow((U[1] - 90), 0.2) + 0.69)));
   X[1] = X[1] + ((t/2) * sin(X[2]*pi/180) * ((10.72 * pow((U[0] - 90), 0.2) - 1.49) + (11.05 * pow((U[1] - 90), 0.2) + 0.69)));
-  X[2] = (X[2] + ((t/84) * ((11.05 * pow((U[1] - 90), 0.2) + 0.69) - (10.72 * pow((U[0] - 90), 0.2) - 1.49))) )%360;
-
+  X[2] = (X[2] + ((t/84) * ((11.05 * pow((U[1] - 90), 0.2) + 0.69) - (10.72 * pow((U[0] - 90), 0.2) - 1.49))) );
+  while (X[2] > 360) {
+    X[2] -= 360;
+  }
+  while (X[2] < 0) {
+    X[2] += 360; 
+  }
   return ;
 }
 
@@ -91,7 +103,7 @@ void stateToOutput(float* X, float* sensorData, float* JacH){
       yDist = z[1];
       //JacH[3] = dLF/dx = dy/dx for this line * derivative of distToLidarF;
       //this line: y = yDist + ax and fits point newBox[i]
-      float a = (newBox[i][1] - yDist) / newBox[i][0]
+      float a = (newBox[i][1] - yDist) / newBox[i][0];
       JacH[3] = a * 0.951;
       //JacH[5] = dLF/dtheta = 
       JacH[5] =  -pi/pow(sin(pi*theta/180),2) / (180*pow((a+1/tan(pi*theta/180)),2))  *dMdtheta;
@@ -135,7 +147,7 @@ void jacobianStateUpdate(float* X, float* U, float* JacF){
 
 
 //
-void kalman(float pwmL, float pwmR, float lidarF, float lidarR, float mag) {
+void kalman(float pwmL, float pwmR, float lidarF, float lidarR, float mag, int id) {
   //create and set U, z, F
   float U[2];
   float z[3];
@@ -192,5 +204,5 @@ void kalman(float pwmL, float pwmR, float lidarF, float lidarR, float mag) {
   M.Multiply(tmp1, tmp2, 3,3,3, cov_est);
   
   sprintf(Ktext, "Kalman: (x,y,theta)=(%f,%f,%f)", X_est[0], X_est[1], X_est[2]);
-  Serial.println(Ktext);
+  wsSend(id, Ktext);
 }

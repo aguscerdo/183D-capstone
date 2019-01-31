@@ -270,7 +270,8 @@ void setupPins() {
 
 }
 
-int lidars[2] = {0, 0};
+float mag;
+float lidars[2] = {0., 0.};
 void webSocketEvent(uint8_t id, WStype_t type, uint8_t * payload, size_t length) {
   
   switch (type) {
@@ -305,8 +306,8 @@ void webSocketEvent(uint8_t id, WStype_t type, uint8_t * payload, size_t length)
       if (payload[0] == '#') {
         if (payload[1] == 'C') {
           LED_ON;
-          sendMagnetometerData(id);
-          sendLidarData(id, lidars);
+//          sendMagnetometerData(id);
+//          sendLidarData(id, lidars);
         }
         else if (payload[1] == 'F')
           forward();
@@ -321,18 +322,14 @@ void webSocketEvent(uint8_t id, WStype_t type, uint8_t * payload, size_t length)
             servo_left_ctr -= 1;
           else if (payload[2] == 'R')
             servo_right_ctr += 1;
-          char tx[20] = "Zero @ (xxx, xxx)";
-          sprintf(tx, "Zero @ (%3d, %3d)", servo_left_ctr, servo_right_ctr);
-          wsSend(id, tx);
+
         }
         else if (payload[1] == 'D') {
           if (payload[2] == 'L')
             servo_left_ctr += 1;
           else if (payload[2] == 'R')
             servo_right_ctr -= 1;
-          char tx[20] = "Zero @ (xxx, xxx)";
-          sprintf(tx, "Zero @ (%3d, %3d)", servo_left_ctr, servo_right_ctr);
-          wsSend(id, tx);
+
         }
         else
           stop();
@@ -340,6 +337,9 @@ void webSocketEvent(uint8_t id, WStype_t type, uint8_t * payload, size_t length)
 
       break;
   }
-    sendMagnetometerData(id);
+    mag = sendMagnetometerData(id);
     sendLidarData(id, lidars);
+
+    kalman(servo_left_ctr, servo_right_ctr, lidars[1], lidars[0], mag, id);
+
 }
