@@ -10,8 +10,8 @@ float JF[9]; //Jacobian of f, xk = f(x_k-1, uk)
 float JH[9]; //Jacobian of j, zk = h(xk)
 float I[9] = {1,0,0,0,1,0,0,0,1}; //3x3 Identity
 
-float Q[9] = {1,0,0,0,1,0,0,0,0.89}; // noise in f
-float R[9] = {4,0,0,0,4,0,0,0,0.8}; // noise in h
+float Q[9] = {0.25*t,0,0,0,0.25*t,0,0,0,0.89}; // noise in f
+float R[9] = {3.28,0,0,0,1.86,0,0,0,0.8}; // noise in h
 
 float tmp0[9]; // temp/intermediary
 float tmp1[9]; // temp/intermediary
@@ -89,7 +89,7 @@ void stateToOutput(float* X, float* sensorData, float* JacH){
     zerosOfLine(newBox[i], newBox[(i+1) % 4], z);
     if (z[1] > 0){
       yDist = z[1];
-      //JacH[3] = dLF/dx = dy/dx for this line;
+      //JacH[3] = dLF/dx = dy/dx for this line * derivative of distToLidarF;
       //this line: y = yDist + ax and fits point newBox[i]
       float a = (newBox[i][1] - yDist) / newBox[i][0]
       JacH[3] = a * 0.951;
@@ -98,7 +98,7 @@ void stateToOutput(float* X, float* sensorData, float* JacH){
     }
     if (z[0] > 0){
       xDist = z[0];
-      //JacH[1] = dLR/dy = dx/dy for this line; 
+      //JacH[1] = dLR/dy = dx/dy for this line * derivative of distToLidarR; 
       //this line: x = xDist + by and fits point newBox[i]
       //b = (x1-xDist) / y1
       float b = (newBox[i][0] - xDist) / newBox[i][1];
