@@ -1,3 +1,4 @@
+float t = 0.1; //time; t = 1/10 -> 10 times every sec
 char Ktext[200];
 float z_est[3]; //z_est given X_est
 float X_est[3]; //X_est
@@ -9,14 +10,14 @@ float JF[9]; //Jacobian of f, xk = f(x_k-1, uk)
 float JH[9]; //Jacobian of j, zk = h(xk)
 float I[9] = {1,0,0,0,1,0,0,0,1}; //3x3 Identity
 
-float Q[9]; // noise in f
-float R[9]; // noise in h
+float Q[9] = {0.25*t,0,0,0,0.25*t,0,0,0,0.89}; // noise in f
+float R[9] = {3.28,0,0,0,1.86,0,0,0,0.8}; // noise in h
 
 float tmp0[9]; // temp/intermediary
 float tmp1[9]; // temp/intermediary
 float tmp2[9]; // temp/intermediary
 float tmp3[9]; // temp/intermediary
-
+float pi = 3.1415;
 MatrixMath M;
 
 float Box[4][2]; //TL TR BR BL
@@ -25,13 +26,13 @@ float Box[4][2]; //TL TR BR BL
 
 //all these functions part of h(.)
 float distToLidarR(float dist){
-  return dist; // should be system3 model
+  return 0.951*dist+47.4; // should be system3 model
 }
 float distToLidarF(float dist){
-  return dist; //should be system3 model
+  return 0.983*dist+22.4; //should be system3 model
 }
 float angleToMagnetometer(float theta){
-   return theta; // should be system3 model
+   return (134*atan(pi/180*(theta-200))+374) %360; // should be system3 model
 }
 //takes in p1, p2, gives zeros (z1,0), (0,z2)
 void zerosOfLine(float* p1, float* p2, float* z){
@@ -49,6 +50,10 @@ void zerosOfLine(float* p1, float* p2, float* z){
 
 //Function f, takes in X, U and updates X
 void stateUpdate(float* X, float* U){
+  X[0] = X[0] + ((t/2) * cos(X[2]*pi/180) * ((10.72 * pow((U[0] - 90), 0.2) - 1.49) + (11.05 * pow((U[1] - 90), 0.2) + 0.69)));
+  X[1] = X[1] + ((t/2) * sin(X[2]*pi/180) * ((10.72 * pow((U[0] - 90), 0.2) - 1.49) + (11.05 * pow((U[1] - 90), 0.2) + 0.69)));
+  X[2] = (X[2] + ((t/84) * ((11.05 * pow((U[1] - 90), 0.2) + 0.69) - (10.72 * pow((U[0] - 90), 0.2) - 1.49))) )%360;
+
   return ;
 }
 
@@ -66,8 +71,8 @@ void stateToOutput(float* X, float* sensorData, float* JacH){
   }
   // Rotate all points 
   // Rotation M. R(-theta)
-  float c = cos(theta);
-  float s = cos(theta);
+  float c = cos(theta*pi/180);
+  float s = cos(theta*pi/180);
   float R[4];
   R[0] = c; R[1] = s;
   R[2] = -s; R[3] = c;
@@ -76,24 +81,30 @@ void stateToOutput(float* X, float* sensorData, float* JacH){
     newBox[i][1] = R[2]*Box[i][0] + R[3]*Box[i][1];
   }
   // Find zeros with y = 0 x > 0 and and x = 0  y > 0
-  float* z;
+  float z[2];
   float xDist = -1; //if they stay -1, something went wrong.
   float yDist = -1;
+  float dMdtheta = 134*180*pi/(pow(pi,2) * pow((theta-200),2) +32400);
   for (int i = 0; i < 4; i++){
     zerosOfLine(newBox[i], newBox[(i+1) % 4], z);
     if (z[1] > 0){
       yDist = z[1];
-      //JacH[3] = dLF/dx = dy/dx for this line;
+      //JacH[3] = dLF/dx = dy/dx for this line * derivative of distToLidarF;
       //this line: y = yDist + ax and fits point newBox[i]
-      //a = (y1-yDist) / x1
-      JacH[3] = (newBox[i][1] - yDist) / newBox[i][0];
+      float a = (newBox[i][1] - yDist) / newBox[i][0]
+      JacH[3] = a * 0.951;
+      //JacH[5] = dLF/dtheta = 
+      JacH[5] =  -pi/pow(sin(pi*theta/180),2) / (180*pow((a+1/tan(pi*theta/180)),2))  *dMdtheta;
     }
     if (z[0] > 0){
       xDist = z[0];
-      //JacH[1] = dLR/dy = dx/dy for this line; 
+      //JacH[1] = dLR/dy = dx/dy for this line * derivative of distToLidarR; 
       //this line: x = xDist + by and fits point newBox[i]
       //b = (x1-xDist) / y1
-      JacH[1] = (newBox[i][0] - xDist) / newBox[i][1];
+      float b = (newBox[i][0] - xDist) / newBox[i][1];
+      JacH[1] = b * 0.983;
+       //JacH[2] = dLR/dtheta = 
+      JacH[2] =  -pi/pow(cos(pi*theta/180),2) / (180*pow((b+tan(pi*theta/180)),2))  *dMdtheta;
     }
   }
   sensorData[0] = distToLidarR(xDist);
@@ -102,17 +113,23 @@ void stateToOutput(float* X, float* sensorData, float* JacH){
 // M = magnetometer, LF = lidar front, LR = lidar right
   JacH[6] = 0; //dM/dx
   JacH[7] = 0;  //dM/dy
-  JacH[8] = 1; // dM/dtheta = derivative of angleToMagnetometer()
-  JacH[0] = 1; // dLR/dx = derivative of distToLidarR()
-  JacH[4] = 1; // dLF/dy = derivative of distToLidarF()
-
-
-
+  JacH[8] = dMdtheta; // dM/dtheta = derivative of angleToMagnetometer()
+  JacH[0] = 0.983; // dLR/dx = derivative of distToLidarR()
+  JacH[4] = 0.951; // dLF/dy = derivative of distToLidarF()
   return ;
 }
 
 //Jacobian of f, takes in X, U returns Jacobian JacF
 void jacobianStateUpdate(float* X, float* U, float* JacF){
+  JF[0] = 1;
+  JF[3] = 0;
+  JF[6] = 0;
+  JF[1] = 0;
+  JF[4] = 1;
+  JF[7] = 0;
+  JF[2] = (-t) * sin(X[2]*pi/180) * pi/180*((5.36 * pow((U[0] - 90), 0.2)) + (5.42 * pow((U[1] - 90), 0.2)) - 0.398);
+  JF[5] = (t) * cos(X[2]*pi/180) * pi/180*((5.36 * pow((U[0] - 90), 0.2)) + (5.42 * pow((U[1] - 90), 0.2)) - 0.398);
+  JF[8] = 1;
   return ;
 }
 
