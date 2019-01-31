@@ -1,7 +1,7 @@
 float t = 0.1; //time; t = 1/10 -> 10 times every sec
 char Ktext[200];
 float z_est[3]; //z_est given X_est
-float X_est[3]; //X_est
+float X_est[3] = { 325, 250, 0}; //X_est
 float cov_est[9]; //P
 float innovation[3]; //y 
 float cov_innovation[9]; //S
@@ -106,7 +106,7 @@ void stateToOutput(float* X, float* sensorData, float* JacH){
       float a = (newBox[i][1] - yDist) / newBox[i][0];
       JacH[3] = a * 0.951;
       //JacH[5] = dLF/dtheta = 
-      JacH[5] =  -pi/pow(sin(pi*theta/180),2) / (180*pow((a+1/tan(pi*theta/180)),2))  *dMdtheta;
+      JacH[5] =  -pi/pow(sin(pi*theta/180),2) / (180*pow((a+1/tan(pi*theta/180)),2)) ;// *dMdtheta;
     }
     if (z[0] > 0){
       xDist = z[0];
@@ -116,7 +116,7 @@ void stateToOutput(float* X, float* sensorData, float* JacH){
       float b = (newBox[i][0] - xDist) / newBox[i][1];
       JacH[1] = b * 0.983;
        //JacH[2] = dLR/dtheta = 
-      JacH[2] =  -pi/pow(cos(pi*theta/180),2) / (180*pow((b+tan(pi*theta/180)),2))  *dMdtheta;
+      JacH[2] =  -pi/pow(cos(pi*theta/180),2) / (180*pow((b+tan(pi*theta/180)),2)) ;// *dMdtheta;
     }
   }
   sensorData[0] = distToLidarR(xDist);
@@ -133,15 +133,15 @@ void stateToOutput(float* X, float* sensorData, float* JacH){
 
 //Jacobian of f, takes in X, U returns Jacobian JacF
 void jacobianStateUpdate(float* X, float* U, float* JacF){
-  JF[0] = 1;
-  JF[3] = 0;
-  JF[6] = 0;
-  JF[1] = 0;
-  JF[4] = 1;
-  JF[7] = 0;
-  JF[2] = (-t) * sin(X[2]*pi/180) * pi/180*((5.36 * pow((U[0] - 90), 0.2)) + (5.42 * pow((U[1] - 90), 0.2)) - 0.398);
-  JF[5] = (t) * cos(X[2]*pi/180) * pi/180*((5.36 * pow((U[0] - 90), 0.2)) + (5.42 * pow((U[1] - 90), 0.2)) - 0.398);
-  JF[8] = 1;
+  JF[0] = 1; //dx/dx
+  JF[1] = 0; //dx/dy
+  JF[2] = 0; //dx/dtheta
+  JF[3] = 0; //dy/dx
+  JF[4] = 1; //dy/dy
+  JF[5] = 0; //dy/dtheta
+  JF[6] = (-t) * sin(X[2]*pi/180) * pi/180*((5.36 * pow((U[0] - 90), 0.2)) + (5.42 * pow((U[1] - 90), 0.2)) - 0.398); //dtheta/dx
+  JF[7] = (t) * cos(X[2]*pi/180) * pi/180*((5.36 * pow((U[0] - 90), 0.2)) + (5.42 * pow((U[1] - 90), 0.2)) - 0.398); //dtheta/dy
+  JF[8] = 1; //dtheta/dtheta
   return ;
 }
 
@@ -153,8 +153,8 @@ void kalman(float pwmL, float pwmR, float lidarF, float lidarR, float mag, int i
   float z[3];
   U[0] = pwmL;
   U[1] = pwmR;
-  z[0] = lidarF;
-  z[1] = lidarR;
+  z[0] = lidarR;
+  z[1] = lidarF;
   z[2] = mag;
   //get JF, X
   jacobianStateUpdate(X_est, U, JF);

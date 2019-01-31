@@ -12,8 +12,8 @@ void sendLidarData(uint8_t id, float out[]) {
     //Maybe these are floats? idk
     int dist[2];
     // Measure and unbias
-    out[0] = float(sensor.readRangeSingleMillimeters() - 22);
-    out[1] = float(sensor2.readRangeSingleMillimeters() - 47);
+    out[0] = float(sensor.readRangeSingleMillimeters() ); //0 right
+    out[1] = float(sensor2.readRangeSingleMillimeters() ); //1 front
     
     sprintf(tx, "L1 (%d); L2(%d)", out[0], out[1]);
   }

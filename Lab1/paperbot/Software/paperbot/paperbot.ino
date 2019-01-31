@@ -59,6 +59,10 @@ char* mDNS_name = "paperbot";
 String html;
 String css;
 
+long prevTime = 0;
+long interval = t*1000;
+long currTime = 0;
+
 // ~~~~~~~~~~~ Functions ~~~~~~~~~~~~~~~~
 void kalman(float pwmL, float pwmR, float lidarF, float lidarR, float mag);
 void sendLidarData(uint8_t id, int out[]);
@@ -339,7 +343,10 @@ void webSocketEvent(uint8_t id, WStype_t type, uint8_t * payload, size_t length)
   }
     mag = sendMagnetometerData(id);
     sendLidarData(id, lidars);
-
-    kalman(servo_left_ctr, servo_right_ctr, lidars[1], lidars[0], mag, id);
+    currTime = millis();
+    if (currTime - prevTime > interval){
+      kalman(servo_left_ctr, servo_right_ctr, lidars[1], lidars[0], mag, id);
+      prevTime = currTime;
+    }
 
 }

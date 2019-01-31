@@ -49,7 +49,7 @@ float sendMagnetometerData(uint8_t id) {
 
   // Convert radians to degrees for readability.
   float headingDegrees = heading * 180 / PI;
-  headingDegrees -= 198;
+  //headingDegrees -= 198;
   if (headingDegrees < 0) headingDegrees += 360;
   if (headingDegrees > 360) headingDegrees -= 360;
 
