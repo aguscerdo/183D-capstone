@@ -71,9 +71,17 @@ void zerosOfLine(float* p1, float* p2, float* z){
   // x = (y-p1.y) * (p2.x - p1.x)/(p2.y - p1.y) + p1.x
   // y = 0; x = 
   float x = (-p1[1]) * (p2[0] - p1[0])/(p2[1] - p1[1]) + p1[0];
+  //check if zeros in-between p1, p2. if not set them to -1; this will cause them not to be used.
+  if ( (x > p1[0] && x > p2[0]) || (x < p1[0] && x < p2[0]) ){
+    x = -1;
+  }
+  if ( (y > p1[1] && y > p2[1]) || (y < p1[1] && y < p2[1]) ){
+    y = -1;
+  }
   //z[0] = x, z[1] = y
   z[0] = x;
   z[1] = y;
+  
   return ;
 }
 
@@ -236,6 +244,6 @@ void kalman(float pwmL, float pwmR, float lidarF, float lidarR, float mag, int i
   M.Copy(cov_est, 3,3, tmp2);
   M.Multiply(tmp1, tmp2, 3,3,3, cov_est);
   
-  sprintf(Ktext, "Kalman: (x,y,theta)=(%f,%f,%f), y=(Lr,Lf,M)=(%f,%f,%f)", X_est[0], X_est[1], X_est[2], innovation[0], innovation[1], innovation [2] );
+  sprintf(Ktext, "Kalman: (x,y,theta)=(%f,%f,%f), zest=(Lr,Lf,M)=(%f,%f,%f), u=(ul,ur)=(%f,%f)", X_est[0], X_est[1], X_est[2], z_est[0], z_est[1], z_est[2], U[0]. U[1] );
   wsSend(id, Ktext);
 }
