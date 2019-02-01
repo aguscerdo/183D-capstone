@@ -1,8 +1,7 @@
 float t = 0.1; //time; t = 1/10 -> 10 times every sec
 char Ktext[200];
 float z_est[3]; //z_est given X_est
-//float X_est[3] = { 325, 250, 0}; //X_est
-float cov_est[9]; //P
+float cov_est[9] = {1,0,0,0,1,0,0,0,1}; //P
 float innovation[3]; //y 
 float cov_innovation[9]; //S
 float gain[9]; //K
@@ -20,10 +19,12 @@ float tmp3[9]; // temp/intermediary
 float pi = 3.1415;
 MatrixMath M;
 
-//float Box[4][2] = {{0, 500}, {750, 500}, {750, 0}, {0, 0}}; //TL TR BR BL
-float pen = 145;
-float Box[4][2] = {{0, 5.5*pen}, {2*pen, 5.5*pen}, {2*pen, 0}, {0, 0}}; //TL TR BR BL
-float X_est[3] = { 1*pen, 2.25*pen, 0}; //X_est
+float Box[4][2] = {{0, 500}, {750, 500}, {750, 0}, {0, 0}}; //TL TR BR BL
+float X_est[3] = { 325, 250, 0}; //X_est
+
+//float pen = 145;
+//float Box[4][2] = {{0, 5.5*pen}, {2*pen, 5.5*pen}, {2*pen, 0}, {0, 0}}; //TL TR BR BL
+//float X_est[3] = { 1*pen, 2.25*pen, 0}; //X_est
 
 float radToDeg(float rad) {
   rad = rad * 180 / pi;
@@ -132,7 +133,7 @@ void stateToOutput(float* X, float* sensorData, float* JacH){
       //JacH[5] = dLF/dtheta = 
 
       // TODO is this equation right
-      JacH[5] =  -pi/180*(a+1)*b*pow(sin(pi*theta/180),-2) / (pow(a+1/tan(degToRad(theta))),2) ;// *dMdtheta;
+      JacH[5] =  -pi/180*(a+1)*b*pow(sin(pi*theta/180),-2) / (pow(a+1/tan(degToRad(theta)),2)) ;// *dMdtheta;
     }
     if (z[0] > 0){
       xDist = z[0];
@@ -144,7 +145,7 @@ void stateToOutput(float* X, float* sensorData, float* JacH){
       JacH[1] = b * 0.983;
        //JacH[2] = dLR/dtheta = 
       // TODO check nums
-      JacH[2] =  -pi/180*(b+1)*a*pow(cos(pi*theta/180),-2) / (pow(b-tan(degToRad(theta))),2) ;// *dMdtheta;
+      JacH[2] =  -pi/180*(b+1)*a*pow(cos(pi*theta/180),-2) / (pow(b-tan(degToRad(theta)),2)) ;// *dMdtheta;
     }
   }
   sensorData[0] = distToLidarR(xDist);
