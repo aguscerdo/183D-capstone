@@ -127,11 +127,12 @@ void stateToOutput(float* X, float* sensorData, float* JacH){
       //JacH[3] = dLF/dx = dy/dx for this line * derivative of distToLidarF;
       //this line: y = yDist + ax and fits point newBox[i]
       float a = (newBox[i][1] - yDist) / newBox[i][0];
+      float b = yDist;
       JacH[3] = a * 0.951;
       //JacH[5] = dLF/dtheta = 
 
       // TODO is this equation right
-      JacH[5] =  -pi/pow(sin(pi*theta/180),2) / (180*pow(a+1/tan(degToRad(theta)),2)) ;// *dMdtheta;
+      JacH[5] =  -pi/180*(a+1)*b*pow(sin(pi*theta/180),-2) / (pow(a+1/tan(degToRad(theta))),2) ;// *dMdtheta;
     }
     if (z[0] > 0){
       xDist = z[0];
@@ -139,10 +140,11 @@ void stateToOutput(float* X, float* sensorData, float* JacH){
       //this line: x = xDist + by and fits point newBox[i]
       //b = (x1-xDist) / y1
       float b = (newBox[i][0] - xDist) / newBox[i][1];
+      float a = xDist;
       JacH[1] = b * 0.983;
        //JacH[2] = dLR/dtheta = 
       // TODO check nums
-      JacH[2] =  -pi/pow(cos(degToRad(theta)),2) / (180*pow((b+tan(degToRad(theta))),2)) ;// *dMdtheta;
+      JacH[2] =  -pi/180*(b+1)*a*pow(cos(pi*theta/180),-2) / (pow(b-tan(degToRad(theta))),2) ;// *dMdtheta;
     }
   }
   sensorData[0] = distToLidarR(xDist);
