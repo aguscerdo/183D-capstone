@@ -1,7 +1,7 @@
 float t = 0.1; //time; t = 1/10 -> 10 times every sec
 char Ktext[200];
 float z_est[3]; //z_est given X_est
-float X_est[3] = { 325, 250, 0}; //X_est
+//float X_est[3] = { 325, 250, 0}; //X_est
 float cov_est[9]; //P
 float innovation[3]; //y 
 float cov_innovation[9]; //S
@@ -20,7 +20,27 @@ float tmp3[9]; // temp/intermediary
 float pi = 3.1415;
 MatrixMath M;
 
-float Box[4][2] = {{0, 500}, {750, 500}, {750, 0}, {0, 0}}; //TL TR BR BL
+//float Box[4][2] = {{0, 500}, {750, 500}, {750, 0}, {0, 0}}; //TL TR BR BL
+float pen = 145;
+float Box[4][2] = {{0, 5.5*pen}, {2*pen, 5.5*pen}, {2*pen, 0}, {0, 0}}; //TL TR BR BL
+float X_est[3] = { 1*pen, 2.25*pen, 0}; //X_est
+
+float radToDeg(float rad) {
+  rad = rad * 180 / pi;
+  while (rad > 360.)
+    rad -= 360.;
+  while (rad < 0)
+    rad += 360.;
+
+  return rad;
+}
+
+float degToRad(float deg) {
+  deg = deg * pi / 180;
+  return deg;
+}
+
+
 
 // TO DO: implement f, F, h, H. convert to matrices.
 
@@ -32,7 +52,8 @@ float distToLidarF(float dist){
   return 0.983*dist+22.4; //should be system3 model
 }
 float angleToMagnetometer(float theta){
-  float tmp = (134*atan(pi/180*(theta-200))+374);
+  // TODO wtf is this?
+  float tmp = (134*atan(degToRad(theta-200))+374);
     while (tmp > 360) {
     tmp -= 360;
   }
@@ -57,8 +78,6 @@ void zerosOfLine(float* p1, float* p2, float* z){
 
 //Function f, takes in X, U and updates X
 void stateUpdate(float* X, float* U){
-  X[0] = X[0] + ((t/2) * cos(X[2]*pi/180) * ((10.72 * pow((U[0] - 90), 0.2) - 1.49) + (11.05 * pow((U[1] - 90), 0.2) + 0.69)));
-  X[1] = X[1] + ((t/2) * sin(X[2]*pi/180) * ((10.72 * pow((U[0] - 90), 0.2) - 1.49) + (11.05 * pow((U[1] - 90), 0.2) + 0.69)));
   X[2] = (X[2] + ((t/84) * ((11.05 * pow((U[1] - 90), 0.2) + 0.69) - (10.72 * pow((U[0] - 90), 0.2) - 1.49))) );
   while (X[2] > 360) {
     X[2] -= 360;
@@ -66,6 +85,9 @@ void stateUpdate(float* X, float* U){
   while (X[2] < 0) {
     X[2] += 360; 
   }
+  X[0] = X[0] + ((t/2) * cos(degToRad(X[2])) * ((10.72 * pow((U[0] - 90), 0.2) - 1.49) + (11.05 * pow((U[1] - 90), 0.2) + 0.69)));
+  X[1] = X[1] + ((t/2) * sin(degToRad(X[2])) * ((10.72 * pow((U[0] - 90), 0.2) - 1.49) + (11.05 * pow((U[1] - 90), 0.2) + 0.69)));
+
   return ;
 }
 
@@ -83,8 +105,8 @@ void stateToOutput(float* X, float* sensorData, float* JacH){
   }
   // Rotate all points 
   // Rotation M. R(-theta)
-  float c = cos(theta*pi/180);
-  float s = cos(theta*pi/180);
+  float c = cos(degToRad(theta));
+  float s = cos(degToRad(theta));
   float R[4];
   R[0] = c; R[1] = s;
   R[2] = -s; R[3] = c;
@@ -96,6 +118,7 @@ void stateToOutput(float* X, float* sensorData, float* JacH){
   float z[2];
   float xDist = -1; //if they stay -1, something went wrong.
   float yDist = -1;
+  // TODO is this eq right? Check units
   float dMdtheta = 134*180*pi/(pow(pi,2) * pow((theta-200),2) +32400);
   for (int i = 0; i < 4; i++){
     zerosOfLine(newBox[i], newBox[(i+1) % 4], z);
@@ -106,7 +129,9 @@ void stateToOutput(float* X, float* sensorData, float* JacH){
       float a = (newBox[i][1] - yDist) / newBox[i][0];
       JacH[3] = a * 0.951;
       //JacH[5] = dLF/dtheta = 
-      JacH[5] =  -pi/pow(sin(pi*theta/180),2) / (180*pow((a+1/tan(pi*theta/180)),2)) ;// *dMdtheta;
+
+      // TODO is this equation right
+      JacH[5] =  -pi/pow(sin(pi*theta/180),2) / (180*pow(a+1/tan(degToRad(theta)),2)) ;// *dMdtheta;
     }
     if (z[0] > 0){
       xDist = z[0];
@@ -116,7 +141,8 @@ void stateToOutput(float* X, float* sensorData, float* JacH){
       float b = (newBox[i][0] - xDist) / newBox[i][1];
       JacH[1] = b * 0.983;
        //JacH[2] = dLR/dtheta = 
-      JacH[2] =  -pi/pow(cos(pi*theta/180),2) / (180*pow((b+tan(pi*theta/180)),2)) ;// *dMdtheta;
+      // TODO check nums
+      JacH[2] =  -pi/pow(cos(degToRad(theta)),2) / (180*pow((b+tan(degToRad(theta))),2)) ;// *dMdtheta;
     }
   }
   sensorData[0] = distToLidarR(xDist);
@@ -126,6 +152,8 @@ void stateToOutput(float* X, float* sensorData, float* JacH){
   JacH[6] = 0; //dM/dx
   JacH[7] = 0;  //dM/dy
   JacH[8] = dMdtheta; // dM/dtheta = derivative of angleToMagnetometer()
+
+  // TODO are these meant to be hard coded
   JacH[0] = 0.983; // dLR/dx = derivative of distToLidarR()
   JacH[4] = 0.951; // dLF/dy = derivative of distToLidarF()
   return ;
@@ -139,8 +167,10 @@ void jacobianStateUpdate(float* X, float* U, float* JacF){
   JF[3] = 0; //dy/dx
   JF[4] = 1; //dy/dy
   JF[5] = 0; //dy/dtheta
-  JF[6] = (-t) * sin(X[2]*pi/180) * pi/180*((5.36 * pow((U[0] - 90), 0.2)) + (5.42 * pow((U[1] - 90), 0.2)) - 0.398); //dtheta/dx
-  JF[7] = (t) * cos(X[2]*pi/180) * pi/180*((5.36 * pow((U[0] - 90), 0.2)) + (5.42 * pow((U[1] - 90), 0.2)) - 0.398); //dtheta/dy
+
+  // TODO check units
+  JF[6] = (-t) * sin(degToRad(X[2])) * pi/180*((5.36 * pow((U[0] - 90), 0.2)) + (5.42 * pow((U[1] - 90), 0.2)) - 0.398); //dtheta/dx
+  JF[7] = (t) * cos(degToRad(X[2])) * pi/180*((5.36 * pow((U[0] - 90), 0.2)) + (5.42 * pow((U[1] - 90), 0.2)) - 0.398); //dtheta/dy
   JF[8] = 1; //dtheta/dtheta
   return ;
 }
@@ -203,6 +233,6 @@ void kalman(float pwmL, float pwmR, float lidarF, float lidarR, float mag, int i
   M.Copy(cov_est, 3,3, tmp2);
   M.Multiply(tmp1, tmp2, 3,3,3, cov_est);
   
-  sprintf(Ktext, "Kalman: (x,y,theta)=(%f,%f,%f)", X_est[0], X_est[1], X_est[2]);
+  sprintf(Ktext, "Kalman: (x,y,theta)=(%f,%f,%f), y=(Lr,Lf,M)=(%f,%f,%f)", X_est[0], X_est[1], X_est[2], innovation[0], innovation[1], innovation [2] );
   wsSend(id, Ktext);
 }

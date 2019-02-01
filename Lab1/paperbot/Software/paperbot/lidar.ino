@@ -15,7 +15,7 @@ void sendLidarData(uint8_t id, float out[]) {
     out[0] = float(sensor.readRangeSingleMillimeters() ); //0 right
     out[1] = float(sensor2.readRangeSingleMillimeters() ); //1 front
     
-    sprintf(tx, "L1 (%d); L2(%d)", out[0], out[1]);
+    sprintf(tx, "L1 (%f); L2(%f)", out[0], out[1]);
   }
   wsSend(id, tx);
   Serial.write(tx);

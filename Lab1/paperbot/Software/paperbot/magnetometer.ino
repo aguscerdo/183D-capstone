@@ -1,7 +1,7 @@
 #include <Wire.h>
 #include <VL53L0X.h>
 
-float m_bias[2] = {-1, -58.500};
+float m_bias[2] = {25.0, 68.0}; //{-1, -58.500};
 float m_scale[2] = {23.0, 24.5};
 
 //Bias: -1.000000 58.500000
