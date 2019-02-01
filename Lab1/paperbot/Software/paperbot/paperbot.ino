@@ -43,6 +43,10 @@ Servo servo_right;
 int servo_left_ctr = 90;
 int servo_right_ctr = 90;
 
+int leftWheel = 90;
+int rightWheel = 90;
+
+
 // WiFi AP parameters
 char ap_ssid[13];
 char* ap_password = "";
@@ -159,6 +163,8 @@ void loop() {
 void drive(int left, int right) {
   servo_left.write(left);
   servo_right.write(right);
+  leftWheel = left;
+  rightWheel = right;
 }
 
 void stop() {
@@ -298,9 +304,9 @@ void webSocketEvent(uint8_t id, WStype_t type, uint8_t * payload, size_t length)
       for (int i = 0; i < length; i++)
         DEBUG("    char : ", payload[i]);
 
-      if (payload[0] == '~')
+      if (payload[0] == '~'){
         drive(180 - payload[1], payload[2]);
-
+      }
 
     case WStype_TEXT:
       DEBUG("On connection #", id)
@@ -344,7 +350,7 @@ void webSocketEvent(uint8_t id, WStype_t type, uint8_t * payload, size_t length)
     sendLidarData(id, lidars);
     currTime = millis();
     if (currTime - prevTime > interval){
-      kalman(servo_left_ctr, servo_right_ctr, lidars[1], lidars[0], mag, id);
+      kalman(leftWheel, rightWheel, lidars[1], lidars[0], mag, id);
       prevTime = currTime;
     }
 

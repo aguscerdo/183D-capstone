@@ -19,8 +19,8 @@ float tmp3[9]; // temp/intermediary
 float pi = 3.1415;
 MatrixMath M;
 
-float Box[4][2] = {{0, 500}, {750, 500}, {750, 0}, {0, 0}}; //TL TR BR BL
-float X_est[3] = { 325, 250, 0}; //X_est
+float Box[4][2] = {{0, 750}, {500, 750}, {500, 0}, {0, 0}}; //TL TR BR BL
+float X_est[3] = { 250, 325, 0}; //X_est
 
 //float pen = 145;
 //float Box[4][2] = {{0, 5.5*pen}, {2*pen, 5.5*pen}, {2*pen, 0}, {0, 0}}; //TL TR BR BL
@@ -65,12 +65,19 @@ float angleToMagnetometer(float theta){
 }
 //takes in p1, p2, gives zeros (z1,0), (0,z2)
 void zerosOfLine(float* p1, float* p2, float* z){
+  //check if division by zero, of so then we have no zero so set as -1
   // y = (x-p1.x) * (p2.y - p1.y)/(p2.x - p1.x) + p1.y
   // x = 0; y = 
-  float y = (-p1[0]) * (p2[1] - p1[1])/(p2[0] - p1[0]) + p1[1];
+  float y = -1;
+  if (p2[0] != p1[0]){
+    y = (-p1[0]) * (p2[1] - p1[1])/(p2[0] - p1[0]) + p1[1];
+  }
   // x = (y-p1.y) * (p2.x - p1.x)/(p2.y - p1.y) + p1.x
   // y = 0; x = 
-  float x = (-p1[1]) * (p2[0] - p1[0])/(p2[1] - p1[1]) + p1[0];
+  float x = -1;
+  if (p2[1] != p1[1] ){
+    x = (-p1[1]) * (p2[0] - p1[0])/(p2[1] - p1[1]) + p1[0];
+  }
   //check if zeros in-between p1, p2. if not set them to -1; this will cause them not to be used.
   if ( (x > p1[0] && x > p2[0]) || (x < p1[0] && x < p2[0]) ){
     x = -1;
@@ -87,17 +94,15 @@ void zerosOfLine(float* p1, float* p2, float* z){
 
 //Function f, takes in X, U and updates X
 void stateUpdate(float* X, float* U){
-  X[2] = (X[2] + ((t/84) * ((11.05 * pow((U[1] - 90), 0.2) + 0.69) - (10.72 * pow((U[0] - 90), 0.2) - 1.49))) );
+  X[2] = X[2] + ((t/84) * ((11.05 * pow((U[1] - 90), 0.2) + 0.69) - (10.72 * pow((U[0] - 90), 0.2) - 1.49)));
   while (X[2] > 360) {
     X[2] -= 360;
   }
   while (X[2] < 0) {
     X[2] += 360; 
   }
-  X[0] = X[0] + ((t/2) * cos(degToRad(X[2])) * ((10.72 * pow((U[0] - 90), 0.2) - 1.49) + (11.05 * pow((U[1] - 90), 0.2) + 0.69)));
-  X[1] = X[1] + ((t/2) * sin(degToRad(X[2])) * ((10.72 * pow((U[0] - 90), 0.2) - 1.49) + (11.05 * pow((U[1] - 90), 0.2) + 0.69)));
-
-  return ;
+  X[0] = X[0] + ((t/2) * cos(degToRad(X[2])) * ((10.72 *sign(U[0] - 90)* pow(abs(U[0] - 90), 0.2) - 1.49) + (11.05 *sign(U[1] - 90)* pow(abs(U[1] - 90), 0.2) + 0.69)));
+  X[1] = X[1] + ((t/2) * sin(degToRad(X[2])) * ((10.72 *sign(U[0] - 90)* pow(abs(U[0] - 90), 0.2) - 1.49) + (11.05 *sign(U[1] - 90)* pow(abs(U[1] - 90), 0.2) + 0.69)));
 }
 
 //Function h, takes in state X and returns sensorData
@@ -115,13 +120,15 @@ void stateToOutput(float* X, float* sensorData, float* JacH){
   // Rotate all points 
   // Rotation M. R(-theta)
   float c = cos(degToRad(theta));
-  float s = cos(degToRad(theta));
+  float s = sin(degToRad(theta));
   float R[4];
-  R[0] = c; R[1] = s;
-  R[2] = -s; R[3] = c;
+  R[0] = c; 
+  R[1] = s;
+  R[2] = -s; 
+  R[3] = c;
   for (int i =  0; i < 4; i++){
-    newBox[i][0] = R[0]*Box[i][0] + R[1]*Box[i][1];
-    newBox[i][1] = R[2]*Box[i][0] + R[3]*Box[i][1];
+    newBox[i][0] = R[0]*newBox[i][0] + R[1]*newBox[i][1];
+    newBox[i][1] = R[2]*newBox[i][0] + R[3]*newBox[i][1];
   }
   // Find zeros with y = 0 x > 0 and and x = 0  y > 0
   float z[2];
@@ -141,7 +148,7 @@ void stateToOutput(float* X, float* sensorData, float* JacH){
       //JacH[5] = dLF/dtheta = 
 
       // TODO is this equation right
-      JacH[5] =  -pi/180*(a+1)*b*pow(sin(pi*theta/180),-2) / (pow(a+1/tan(degToRad(theta)),2)) ;// *dMdtheta;
+      JacH[5] =  -pi/180*(a+1)*b / (pow(sin(pi*theta/180),2) * (pow(a+1/tan(degToRad(theta)),2))) ;// *dMdtheta;
     }
     if (z[0] > 0){
       xDist = z[0];
@@ -153,7 +160,7 @@ void stateToOutput(float* X, float* sensorData, float* JacH){
       JacH[1] = b * 0.983;
        //JacH[2] = dLR/dtheta = 
       // TODO check nums
-      JacH[2] =  -pi/180*(b+1)*a*pow(cos(pi*theta/180),-2) / (pow(b-tan(degToRad(theta)),2)) ;// *dMdtheta;
+      JacH[2] =  -pi/180*(b+1)*a / (pow(cos(pi*theta/180),2) * (pow(b-tan(degToRad(theta)),2))) ;// *dMdtheta;
     }
   }
   sensorData[0] = distToLidarR(xDist);
@@ -170,20 +177,26 @@ void stateToOutput(float* X, float* sensorData, float* JacH){
   return ;
 }
 
+float sign(float in){
+  if (in < 0){
+    return -1;
+  }
+  return 1;
+}
+
 //Jacobian of f, takes in X, U returns Jacobian JacF
 void jacobianStateUpdate(float* X, float* U, float* JacF){
-  JF[0] = 1; //dx/dx
-  JF[1] = 0; //dx/dy
-  JF[2] = 0; //dx/dtheta
-  JF[3] = 0; //dy/dx
-  JF[4] = 1; //dy/dy
-  JF[5] = 0; //dy/dtheta
+  JacF[0] = 1; //dx/dx
+  JacF[1] = 0; //dx/dy
+  JacF[2] = 0; //dx/dtheta
+  JacF[3] = 0; //dy/dx
+  JacF[4] = 1; //dy/dy
+  JacF[5] = 0; //dy/dtheta
 
-  // TODO check units
-  JF[6] = (-t) * sin(degToRad(X[2])) * pi/180*((5.36 * pow((U[0] - 90), 0.2)) + (5.42 * pow((U[1] - 90), 0.2)) - 0.398); //dtheta/dx
-  JF[7] = (t) * cos(degToRad(X[2])) * pi/180*((5.36 * pow((U[0] - 90), 0.2)) + (5.42 * pow((U[1] - 90), 0.2)) - 0.398); //dtheta/dy
-  JF[8] = 1; //dtheta/dtheta
-  return ;
+  // TODO check units *
+  JacF[6] = (-t) * sin(degToRad(X[2])) * pi/180 * ((5.36 * sign(U[0] - 90)* pow(abs(U[0] - 90), 0.2)) + (5.42 * sign(U[1] - 90)*pow(abs(U[1] - 90), 0.2)) - 0.398); //dtheta/dx
+  JacF[7] = (t) * cos(degToRad(X[2])) * pi/180*((5.36 * sign(U[0] - 90)* pow(abs(U[0] - 90), 0.2)) + (5.42 * sign(U[1] - 90)*pow(abs(U[1] - 90), 0.2)) - 0.398); //dtheta/dy
+  JacF[8] = 1; //dtheta/dtheta
 }
 
 
@@ -244,6 +257,6 @@ void kalman(float pwmL, float pwmR, float lidarF, float lidarR, float mag, int i
   M.Copy(cov_est, 3,3, tmp2);
   M.Multiply(tmp1, tmp2, 3,3,3, cov_est);
   
-  sprintf(Ktext, "Kalman: (x,y,theta)=(%f,%f,%f), zest=(Lr,Lf,M)=(%f,%f,%f), u=(ul,ur)=(%f,%f)", X_est[0], X_est[1], X_est[2], z_est[0], z_est[1], z_est[2], U[0]. U[1] );
+  sprintf(Ktext, "Kalman: (x,y,theta)=(%f,%f,%f), zest=(Lr,Lf,M)=(%f,%f,%f), u=(ul,ur)=(%f,%f)", X_est[0], X_est[1], X_est[2], z_est[0], z_est[1], z_est[2], U[0], U[1] );
   wsSend(id, Ktext);
 }
