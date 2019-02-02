@@ -94,7 +94,7 @@ void zerosOfLine(float* p1, float* p2, float* z){
 
 //Function f, takes in X, U and updates X
 void stateUpdate(float* X, float* U){
-  X[2] = X[2] + ((t/84) * ((11.05 * pow((U[1] - 90), 0.2) + 0.69) - (10.72 * pow((U[0] - 90), 0.2) - 1.49)));
+  X[2] = X[2] + ((t/84) * ((11.05 * sign(U[0] - 90)*pow(abs(U[1] - 90), 0.2) + 0.69) - (10.72 * sign(U[0] - 90)*pow(abs(U[0] - 90), 0.2) - 1.49)));
   while (X[2] > 360) {
     X[2] -= 360;
   }
@@ -201,10 +201,11 @@ void jacobianStateUpdate(float* X, float* U, float* JacF){
 
 
 //
-void kalman(float pwmL, float pwmR, float lidarF, float lidarR, float mag, int id) {
+void kalman(int pwmL, int pwmR, float lidarF, float lidarR, float mag, int id) {
   //create and set U, z, F
-  float U[2];
+  int U[2];
   float z[3];
+  float predX[3];
   U[0] = pwmL;
   U[1] = pwmR;
   z[0] = lidarR;
@@ -213,6 +214,7 @@ void kalman(float pwmL, float pwmR, float lidarF, float lidarR, float mag, int i
   //get JF, X
   jacobianStateUpdate(X_est, U, JF);
   stateUpdate(X_est, U);
+  M.Copy(X_est, 3, 1, predX);
   //predict
   //cov_est = JF*cov_est*JF.T+Q;
   M.Multiply(JF, cov_est, 3,3,3, tmp0);
@@ -257,6 +259,6 @@ void kalman(float pwmL, float pwmR, float lidarF, float lidarR, float mag, int i
   M.Copy(cov_est, 3,3, tmp2);
   M.Multiply(tmp1, tmp2, 3,3,3, cov_est);
   
-  sprintf(Ktext, "Kalman: (x,y,theta)=(%f,%f,%f), zest=(Lr,Lf,M)=(%f,%f,%f), u=(ul,ur)=(%f,%f)", X_est[0], X_est[1], X_est[2], z_est[0], z_est[1], z_est[2], U[0], U[1] );
+  sprintf(Ktext, "Kalman: X: predict then measurement update (x,y,theta)=(%f,%f,%f)->(%f,%f,%f, zest=(Lr,Lf,M)=(%f,%f,%f), u=(ul,ur)=(%d,%d)", predX[0],predX[1],predX[2], X_est[0], X_est[1], X_est[2], z_est[0], z_est[1], z_est[2], U[0], U[1] );
   wsSend(id, Ktext);
 }

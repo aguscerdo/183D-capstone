@@ -67,7 +67,7 @@ long interval = 0.1*1000;
 long currTime = 0;
 
 // ~~~~~~~~~~~ Functions ~~~~~~~~~~~~~~~~
-void kalman(float pwmL, float pwmR, float lidarF, float lidarR, float mag);
+void kalman(int pwmL, int pwmR, float lidarF, float lidarR, float mag);
 void sendLidarData(uint8_t id, int out[]);
 float sendMagnetometerData(uint8_t id);
 void magcalMPU9250();
