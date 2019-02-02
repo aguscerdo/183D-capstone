@@ -1,4 +1,4 @@
-float t = 0.1; //time; t = 1/10 -> 10 times every sec
+float t = 0.5; //time; t = 1/10 -> 10 times every sec
 char Ktext[200];
 float z_est[3]; //z_est given X_est
 float cov_est[9] = {1,0,0,0,1,0,0,0,1}; //P
@@ -20,7 +20,7 @@ float pi = 3.1415;
 MatrixMath M;
 
 float Box[4][2] = {{0, 750}, {500, 750}, {500, 0}, {0, 0}}; //TL TR BR BL
-float X_est[3] = { 250, 325, 0}; //X_est
+float X_est[3] = { 250, 325, 0.1}; //X_est
 
 //float pen = 145;
 //float Box[4][2] = {{0, 5.5*pen}, {2*pen, 5.5*pen}, {2*pen, 0}, {0, 0}}; //TL TR BR BL
@@ -125,10 +125,12 @@ void zerosOfLine(float* p1, float* p2, float* z){
   
   return ;
 }
-
+char dtext[200];
 //Function f, takes in X, U and updates X
 void stateUpdate(float* X, float* U){
   X[2] = X[2] + ((t/84) * ((11.05 * sign(U[0] - 90)*pow(abs(U[1] - 90), 0.2) + 0.69) - (10.72 * sign(U[0] - 90)*pow(abs(U[0] - 90), 0.2) - 1.49)));
+  sprintf(dtext, "X2: %f; U (%f, %f)", X[2], U[0], U[1]);
+  Serial.println(dtext);
   while (X[2] > 360) {
     X[2] -= 360;
   }
@@ -200,7 +202,7 @@ void stateToOutput(float* X, float* sensorData, float* JacH){
   }
   sensorData[0] = distToLidarR(xDist);
   sensorData[1] = distToLidarF(yDist);
-  sensorData[2] = angleToMagnetometer(theta);
+  sensorData[2] = angleToMagnetometerPWL(theta);
 // M = magnetometer, LF = lidar front, LR = lidar right
   JacH[6] = 0; //dM/dx
   JacH[7] = 0;  //dM/dy
@@ -238,7 +240,7 @@ void jacobianStateUpdate(float* X, float* U, float* JacF){
 //
 void kalman(int pwmL, int pwmR, float lidarF, float lidarR, float mag, int id) {
   //create and set U, z, F
-  int U[2];
+  float U[2];
   float z[3];
   float predX[3];
   U[0] = pwmL;
@@ -294,6 +296,6 @@ void kalman(int pwmL, int pwmR, float lidarF, float lidarR, float mag, int id) {
   M.Copy(cov_est, 3,3, tmp2);
   M.Multiply(tmp1, tmp2, 3,3,3, cov_est);
   
-  sprintf(Ktext, "Kalman: X: predict then measurement update (x,y,theta)=(%f,%f,%f)->(%f,%f,%f, zest=(Lr,Lf,M)=(%f,%f,%f), u=(ul,ur)=(%d,%d)", predX[0],predX[1],predX[2], X_est[0], X_est[1], X_est[2], z_est[0], z_est[1], z_est[2], U[0], U[1] );
+  sprintf(Ktext, "Kalman: X: predict then measurement update (x,y,theta)=(%f,%f,%f)->(%f,%f,%f, zest=(Lr,Lf,M)=(%f,%f,%f), u=(ul,ur)=(%d,%d)", predX[0],predX[1],predX[2], X_est[0], X_est[1], X_est[2], z_est[0], z_est[1], z_est[2], pwmL, pwmR );
   wsSend(id, Ktext);
 }

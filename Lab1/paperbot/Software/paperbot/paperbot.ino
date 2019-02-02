@@ -47,6 +47,9 @@ int leftWheel = 90;
 int rightWheel = 90;
 
 
+float mag;
+float lidars[2] = {0., 0.};
+
 // WiFi AP parameters
 char ap_ssid[13];
 char* ap_password = "";
@@ -63,8 +66,10 @@ String html;
 String css;
 
 long prevTime = 0;
-long interval = 0.1*1000;
+long interval = 0.5*1000;
 long currTime = 0;
+
+int webID = 0;
 
 // ~~~~~~~~~~~ Functions ~~~~~~~~~~~~~~~~
 void kalman(int pwmL, int pwmR, float lidarF, float lidarR, float mag);
@@ -153,6 +158,13 @@ void I2CwriteByte(uint8_t Address, uint8_t Register, uint8_t Data)
 void loop() {
   wsLoop();
   httpLoop();
+  currTime = millis();
+  if (currTime - prevTime > interval){
+    mag = sendMagnetometerData(webID);
+    sendLidarData(webID, lidars);
+    kalman(leftWheel, rightWheel, lidars[1], lidars[0], mag, webID);
+    prevTime = currTime;
+  }
 }
 
 
@@ -279,10 +291,8 @@ void setupPins() {
 
 }
 
-float mag;
-float lidars[2] = {0., 0.};
 void webSocketEvent(uint8_t id, WStype_t type, uint8_t * payload, size_t length) {
-  
+  webID = id;
   switch (type) {
     case WStype_DISCONNECTED:
       DEBUG("Web socket disconnected, id = ", id);
@@ -315,8 +325,6 @@ void webSocketEvent(uint8_t id, WStype_t type, uint8_t * payload, size_t length)
       if (payload[0] == '#') {
         if (payload[1] == 'C') {
           LED_ON;
-//          sendMagnetometerData(id);
-//          sendLidarData(id, lidars);
         }
         else if (payload[1] == 'F')
           forward();
@@ -346,12 +354,6 @@ void webSocketEvent(uint8_t id, WStype_t type, uint8_t * payload, size_t length)
 
       break;
   }
-    mag = sendMagnetometerData(id);
-    sendLidarData(id, lidars);
-    currTime = millis();
-    if (currTime - prevTime > interval){
-      kalman(leftWheel, rightWheel, lidars[1], lidars[0], mag, id);
-      prevTime = currTime;
-    }
+    
 
 }
