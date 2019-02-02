@@ -203,7 +203,7 @@ void jacobianStateUpdate(float* X, float* U, float* JacF){
 //
 void kalman(int pwmL, int pwmR, float lidarF, float lidarR, float mag, int id) {
   //create and set U, z, F
-  int U[2];
+  float U[2];
   float z[3];
   float predX[3];
   U[0] = pwmL;
@@ -252,13 +252,14 @@ void kalman(int pwmL, int pwmR, float lidarF, float lidarR, float mag, int id) {
   //X_est = X_est+gain*innovation;
   M.Multiply(gain, innovation, 3,3,1, tmp0);
   M.Copy(X_est, 3,1, tmp1);
-  M.Add(tmp1, tmp0, 3, 1, X_est);
+  //M.Add(tmp1, tmp0, 3, 1, X_est); test with subtract
+  M.Subtract(tmp1, tmp0, 3, 1, X_est);
   //cov_est = (I-gain*JH)*cov_est;
   M.Multiply(gain, JH, 3,3,3, tmp0);
   M.Subtract(I, tmp0, 3, 3, tmp1);
   M.Copy(cov_est, 3,3, tmp2);
   M.Multiply(tmp1, tmp2, 3,3,3, cov_est);
   
-  sprintf(Ktext, "Kalman: X: predict then measurement update (x,y,theta)=(%f,%f,%f)->(%f,%f,%f, zest=(Lr,Lf,M)=(%f,%f,%f), u=(ul,ur)=(%d,%d)", predX[0],predX[1],predX[2], X_est[0], X_est[1], X_est[2], z_est[0], z_est[1], z_est[2], U[0], U[1] );
+  sprintf(Ktext, "Kalman: X: predict then measurement update (x,y,theta)=(%f,%f,%f)->(%f,%f,%f, zest=(Lr,Lf,M)=(%f,%f,%f), u=(ul,ur)=(%d,%d)", predX[0],predX[1],predX[2], X_est[0], X_est[1], X_est[2], z_est[0], z_est[1], z_est[2], pwmL, pwmR );
   wsSend(id, Ktext);
 }
