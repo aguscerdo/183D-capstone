@@ -63,6 +63,40 @@ float angleToMagnetometer(float theta){
   }
    return  tmp; // should be system3 model
 }
+float angleToMagnetometerPWL(float theta){
+  //piecewise linear version
+  float tmp = 4.41*theta - 529;
+  if (theta < 190){
+    tmp = 0.611*theta + 187;
+  }
+  else if (theta > 220){
+    tmp = 0.876*theta + 250;
+  }
+    while (tmp > 360) {
+    tmp -= 360;
+  }
+  while (tmp < 0) {
+    tmp += 360; 
+  }
+   return  tmp; 
+}
+float dMdthetaPWL(float theta){
+  //piecewise linear derivative
+  float tmp = 4.41;
+  if (theta < 190){
+    tmp = 0.611;
+  }
+  else if (theta > 220){
+    tmp = 0.876;
+  }
+    while (tmp > 360) {
+    tmp -= 360;
+  }
+  while (tmp < 0) {
+    tmp += 360; 
+  }
+   return  tmp; 
+}
 //takes in p1, p2, gives zeros (z1,0), (0,z2)
 void zerosOfLine(float* p1, float* p2, float* z){
   //check if division by zero, of so then we have no zero so set as -1
@@ -136,6 +170,7 @@ void stateToOutput(float* X, float* sensorData, float* JacH){
   float yDist = -1;
   // TODO is this eq right? Check units
   float dMdtheta = 134*180*pi/(pow(pi,2) * pow((theta-200),2) +32400);
+  dMdtheta = dMdthetaPWL(theta); //take piecewise linear version for this test
   for (int i = 0; i < 4; i++){
     zerosOfLine(newBox[i], newBox[(i+1) % 4], z);
     if (z[1] > 0){
@@ -203,7 +238,7 @@ void jacobianStateUpdate(float* X, float* U, float* JacF){
 //
 void kalman(int pwmL, int pwmR, float lidarF, float lidarR, float mag, int id) {
   //create and set U, z, F
-  float U[2];
+  int U[2];
   float z[3];
   float predX[3];
   U[0] = pwmL;
@@ -252,14 +287,13 @@ void kalman(int pwmL, int pwmR, float lidarF, float lidarR, float mag, int id) {
   //X_est = X_est+gain*innovation;
   M.Multiply(gain, innovation, 3,3,1, tmp0);
   M.Copy(X_est, 3,1, tmp1);
-  //M.Add(tmp1, tmp0, 3, 1, X_est); test with subtract
-  M.Subtract(tmp1, tmp0, 3, 1, X_est);
+  M.Add(tmp1, tmp0, 3, 1, X_est);
   //cov_est = (I-gain*JH)*cov_est;
   M.Multiply(gain, JH, 3,3,3, tmp0);
   M.Subtract(I, tmp0, 3, 3, tmp1);
   M.Copy(cov_est, 3,3, tmp2);
   M.Multiply(tmp1, tmp2, 3,3,3, cov_est);
   
-  sprintf(Ktext, "Kalman: X: predict then measurement update (x,y,theta)=(%f,%f,%f)->(%f,%f,%f, zest=(Lr,Lf,M)=(%f,%f,%f), u=(ul,ur)=(%d,%d)", predX[0],predX[1],predX[2], X_est[0], X_est[1], X_est[2], z_est[0], z_est[1], z_est[2], pwmL, pwmR );
+  sprintf(Ktext, "Kalman: X: predict then measurement update (x,y,theta)=(%f,%f,%f)->(%f,%f,%f, zest=(Lr,Lf,M)=(%f,%f,%f), u=(ul,ur)=(%d,%d)", predX[0],predX[1],predX[2], X_est[0], X_est[1], X_est[2], z_est[0], z_est[1], z_est[2], U[0], U[1] );
   wsSend(id, Ktext);
 }
