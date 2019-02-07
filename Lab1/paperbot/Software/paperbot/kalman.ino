@@ -162,9 +162,11 @@ void stateToOutput(float* X, float* sensorData, float* JacH){
   R[1] = s;
   R[2] = -s; 
   R[3] = c;
+  float tmpx;
   for (int i =  0; i < 4; i++){
-    newBox[i][0] = R[0]*newBox[i][0] + R[1]*newBox[i][1];
+    tmpx = R[0]*newBox[i][0] + R[1]*newBox[i][1];
     newBox[i][1] = R[2]*newBox[i][0] + R[3]*newBox[i][1];
+    newBox[i][0] = tmpx;
   }
   // Find zeros with y = 0 x > 0 and and x = 0  y > 0
   float z[2];
