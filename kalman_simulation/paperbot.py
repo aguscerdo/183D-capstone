@@ -15,17 +15,27 @@ class PaperBot:
         self.d = 49
         self.A = 84
 
+        self.dims = [750, 500]
+        self.sensors = SensorEstimator(self.dims[0], self.dims[1])
+
 
     def _add_history(self):
         self.history.append([self.x, self.y, self.th, self.t])
         self.t += 1
 
 
+    def scos(self, th):
+        return np.cos(np.pi / 2 - th)
+
+    def ssin(self, th):
+        return np.sin(np.pi / 2 - th)
+
+
     def dynamics(self, wl, wr):
         dconst = self.dt / 2 * np.pi * self.d
-        dx =  dconst * np.cos(self.th) * (wl + wr)
-        dy = dconst * np.sin(self.th) * (wl + wr)
-        dth = dconst / self.A * (wr - wl)
+        dx =  dconst * self.scos(self.th) * (wl + wr)
+        dy = dconst * self.ssin(self.th) * (wl + wr)
+        dth = dconst / self.A * (wl - wr)
         return dx, dy, dth
     
     
@@ -56,7 +66,7 @@ class PaperBot:
     
         X = list(nparr[:, 0])
         Y = list(nparr[:, 1])
-        th = list(nparr[:, 2])
+        Th = list(nparr[:, 2])
         t = list(nparr[:, 3])
     
         # colormap = plt.cm.YlGn(list(np.linspace(0.0, 1.0, 360)))
@@ -64,15 +74,76 @@ class PaperBot:
         plt.scatter(X, Y, c=t, cmap='RdBu')
         # plt.colorbar(colormap)
     
-        plt.title('Position over Time')
+        plt.title('Position over Time: {} - {}'.format(t[-1], Th[-1]))
         plt.xlabel('X (mm)')
         plt.ylabel('Y (mm)')
         
         mmin = np.minimum(np.min(X), np.min(Y))
         mmax = np.maximum(np.max(X), np.max(Y))
 
-        # plt.xlim([0, mmax])
-        # plt.ylim([0, mmax])
-        # plt.plot([0, 750, 750, 0, 0], [0, 0, 500, 500, 0], c='k')
-        
+        # plt.xlim([0, mmax + 250])
+        # plt.ylim([0, mmax + 250])
+        plt.axis('equal')
+        plt.plot([0, self.dims[0], self.dims[0], 0, 0], [0, 0, self.dims[1], self.dims[1], 0], c='k')
+
+        self.sensors.plot_line(X[-1], Y[-1], Th[-1])
+
         plt.show()
+
+
+class SensorEstimator:
+    def __init__(self, xdim, ydim):
+        self.x = xdim
+        self.y = ydim
+        self.p = 2 * np.pi
+        self.p2 = np.pi / 2
+
+
+    def front_lidar(self, X, Y, Th):
+        while Th > self.p:
+            Th -= self.p
+        while Th < self.p:
+            Th += self.p
+
+        th0 = Th
+        while th0 > self.p2:
+            th0 -= self.p2
+
+        coth = np.cos(th0) + 1e-7
+        sith = np.sin(th0) + 1e-7
+
+        dy = self.y - Y
+        dx = self.x - X
+
+
+        if Th < self.p2 * 1:
+            l = np.minimum(dy / coth, dx / sith)
+        elif Th < self.p2 * 2:
+            l = np.minimum(dx / coth, Y / sith)
+        elif Th < self.p2 * 3:
+            l = np.minimum(Y / coth, X / sith)
+        else:
+            l = np.minimum(dy / coth, X / sith)
+
+        return l
+
+
+    def right_lidar(self, X, Y, Th):
+        return self.front_lidar(X, Y, Th + self.p2)
+
+
+    def plot_line(self, X, Y, Th):
+        lf = self.front_lidar(X, Y, Th)
+        lr = self.right_lidar(X, Y, Th)
+        print('~~', lf, lr)
+        p21X = X + np.cos(self.p2 - Th) * lf
+        p21Y = Y + np.sin(self.p2 - Th) * lf
+        print(p21X, p21Y)
+
+        p22X = X + np.cos(-Th) * lr
+        p22Y = Y + np.sin(-Th) * lr
+        print(p22X, p22Y)
+
+        plt.plot([X, p21X], [Y, p21Y],c='r', label='Front')
+        plt.plot([X, p22X], [Y, p22Y],c='b', label='Right')
+        plt.legend()
