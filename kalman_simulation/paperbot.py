@@ -8,6 +8,10 @@ class PaperBot:
         self.y = y0
         self.th = th0
         self.history = []
+        
+        self.lidar_f = 0
+        self.lidar_r = 0
+        self.magnetometer = 0
 
         self.t = 0
         
@@ -27,6 +31,7 @@ class PaperBot:
         self.R[1, 1] = 1.86
         self.R[2, 2] = 0.8
 
+        # TODO improve this
         self.Q = np.zeros((3, 3))
         self.Q[0, 0] = 0.25 * self.dt
         self.Q[1, 1] = 0.25 * self.dt
@@ -35,6 +40,49 @@ class PaperBot:
         self.P = self.Q.copy()
 
         self.jacF = np.eye(3)
+        self.jacH = np.eye(3)
+    
+    
+    def _jacobian_H(self, min0=True, min1=True):    # Var to determine if min is l0 or l1
+        th0 = self.th
+        th1 = self.th + np.pi / 2
+        if th1 > 2 * np.pi:
+            th1 -= 2 * np.pi
+        
+        min_arr = [min0, min1]
+        
+        for i, t in enumerate([th0, th1]):
+            truth = min_arr[i]
+            dy = self.dims[1] - self.y
+            dx = self.dims[0] - self.x
+            
+            # Gradient with respect to theta (??)
+            if t < np.pi / 2:
+                if truth:
+                    grad = dy * np.tan(t) / np.cos(t)
+                else:
+                    grad = dx * -1 / (np.sin(t) * np.tan(t))
+            elif t < np.pi:
+                if truth:
+                    grad = dx
+            elif t < 3 * np.pi / 2:
+                pass
+            else:
+                pass
+        
+
+        # elif Th < self.p2 * 2:
+        #     l0 = dx / coth
+        #     l1 = Y / sith
+        # elif Th < self.p2 * 3:
+        #     l0 = Y / coth
+        #     l1 = X / sith
+        # else:
+        #     l0 = X / coth
+        #     l1 = dy / sith
+        
+        
+        self.jacH[2, 2] = 1 / (1 + self.th ** 2)
 
 
     def _jacobian_F(self, wl, wr):
@@ -64,7 +112,25 @@ class PaperBot:
         return np.sin(np.pi / 2 - th)
 
 
-    def dynamics(self, wl, wr):
+    def move(self, ul, ur):
+        print('t: {} -- X: {}, Y: {}, Th: {}'.format(self.t, self.x, self.y, self.th))
+        print('\tul: {}, ur: {}'.format(ul, ur))
+        ul -= 90
+        ur -= 90
+    
+        wl = np.sign(ul) * np.power(np.abs(ul), 0.2)
+        wr = np.sign(ur) * np.power(np.abs(ur), 0.2)
+        print('\tw1: {}, w2: {}'.format(wl, wr))
+    
+        self.apriori(wl, wr)
+        self.sense()
+        self._add_history()
+        
+
+    def sense(self):
+        pass
+
+    def apriori(self, wl, wr):
         dx =  self.dconst * self.scos(self.th) * (wl + wr)
         dy = self.dconst * self.ssin(self.th) * (wl + wr)
         dth = self.dconst / self.A * (wl - wr)
@@ -77,29 +143,33 @@ class PaperBot:
             self.th -= 2 * np.pi
         while self.th < 0:
             self.th += 2 * np.pi
-            
-            
-    def move(self, ul, ur):
-        print('t: {} -- X: {}, Y: {}, Th: {}'.format(self.t, self.x, self.y, self.th))
-        print('\tul: {}, ur: {}'.format(ul, ur))
-        ul -= 90
-        ur -= 90
         
-        wl = np.sign(ul) * np.power(np.abs(ul), 0.2)
-        wr = np.sign(ur) * np.power(np.abs(ur), 0.2)
-        print('\tw1: {}, w2: {}'.format(wl, wr))
-        
-        self.dynamics(wl, wr)
         self._jacobian_F(wl, wr)
-        self.apriori_P_update()
-        
-        self._add_history()
-
-
-    def apriori_P_update(self):
         self.P = self.jacF.dot(self.P.dot(self.jacF.T)) + self.Q
-        print('P', self.P)
 
+            
+
+    def posteriori(self):
+        estimates = self.sensors.ret(self.x, self.y, self.th)
+        # TODO correctly get this stuff
+        
+        
+        innovation = np.asarray([self.lidar_f - est_F, self.lidar_r - est_R, self.magnetometer - est_M], float)
+        innovation_cov = self.jacH.dot(self.P.dot(self.jacH.T)) + self.Q
+        
+        flag = 1
+        while flag:
+            try:
+                Sinv = np.linalg.inv(innovation_cov)
+                flag = 0
+            except:
+                innovation_cov += np.eye(innovation_cov.shape[0]) * 1e-5
+                Sinv = np.eye()
+        
+        kalman = self.P.dot(self.jacH.T).dot(Sinv)
+        
+        
+    
     def plot_history(self):
         nparr = np.asarray(self.history)
     
@@ -152,6 +222,10 @@ class SensorEstimator:
         self.p2 = np.pi / 2
 
 
+    def ret(self, X, Y, Th):
+        return [self.front_lidar(X, Y, Th), self.right_lidar(X, Y, Th), Th + np.random.normal(0, 0.15)]
+
+
     def front_lidar(self, X, Y, Th):
         while Th > self.p:
             Th -= self.p
@@ -181,7 +255,7 @@ class SensorEstimator:
             l0 = X / coth
             l1 = dy / sith
 
-        return min(l0, l1)
+        return l0, l1
 
 
     def right_lidar(self, X, Y, Th):
@@ -189,9 +263,11 @@ class SensorEstimator:
 
 
     def plot_line(self, X, Y, Th, ax):
-        lf = self.front_lidar(X, Y, Th)
-        lr = self.right_lidar(X, Y, Th)
-        
+        lf0, lf1 = self.front_lidar(X, Y, Th)
+        lf = min(lf0, lf1)
+        lr0, lr1 = self.right_lidar(X, Y, Th)
+        lr = min(lr0, lr1)
+
         p21X = X + np.cos(self.p2 - Th) * lf
         p21Y = Y + np.sin(self.p2 - Th) * lf
 

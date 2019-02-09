@@ -14,8 +14,9 @@ def main():
 	for i in range(min(len(ul), len(ur))):
 		p.move(ul[i], ur[i])
 		
-		# if i % 5 == 0:
-		# 	p.plot_history()
+		if i % 5 == 0:
+			p.plot_history()
+		# p.plot_history()
 
 	p.plot_history()
 	
