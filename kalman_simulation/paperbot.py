@@ -40,7 +40,7 @@ class PaperBot:
         self.R[1, 1] = 1.86
         self.R[2, 2] = 0.8
 
-        # TODO put correct values
+        # TODO put correct values. I think these vals are right?
         # Actuators cov
         self.Q = np.zeros((3, 3))
         self.Q[0, 0] = 0.25 * self.dt
@@ -172,14 +172,58 @@ class PaperBot:
         #self.posteriori()       # Perform posteriori update
         self._add_history()     # Add current state
         
+    def thetaToMag(self, th):
+        mag_measure = 0
+        th_deg = th * 180/np.pi
+        if (th_deg < 190):
+            mag_measure = 0.611*th_deg + 187
+        elif (th_deg > 220):
+            mag_measure = 0.876*th_deg + 250
+        else:
+            mag_measure = 4.41*th_deg - 529
+        mag_measure = mag_measure * np.pi/180
+        return mag_measure
 
-    # TODO implement
+    def distToLidarR(self, front_dist):
+        return 0.983*front_dist+22.4
+
+    def distToLidarF(self, right_dist):
+        return 0.951*right_dist+47.4
+    # Done? Check pls
     def sense(self):
         """
-        Simulate lidar and magnetometer measurements
+        Simulate lidar and magnetometer measurements, using numerics + some noise
         :return:
         """
-        pass
+        noise_th = np.random.normal(0, 2)
+        noise_lidar_front = np.random.normal(0, 4)
+        noise_lidar_right = np.random.normal(0, 4)
+        
+        #numerical approach, err=1, find point of intersection w walls and then get distance
+        eps = 1
+        xboundary, yboundary = self.dims
+        #get right lidar with cos,sin (theta) 
+        c, s = np.cos(self.th), np.sin(self.th)
+        wallx = self.x
+        wally = self.y
+        while (wallx < xboundary and wallx > 0 and wally < yboundary and wally > 0):
+            wallx = wallx +  c*eps
+            wally = wally +  s*eps
+        right_dist = dist([wallx, wally], [self.x, self.y]) + noise_lidar_right
+        #get front lidar with cos,sin (theta+90)
+        c, s = np.cos(self.th+np.pi/2), np.sin(self.th+np.pi/2)
+        wallx = self.x
+        wally = self.y
+        while (wallx < xboundary and wallx > 0 and wally < yboundary and wally > 0):
+            wallx = wallx + c*eps
+            wally = wally + s*eps
+        front_dist = dist([wallx, wally], [self.x, self.y]) + noise_lidar_front
+        # these equations are our lab1 models
+        # get magnetometer bearing based on theta
+        
+        self.lidar_f = self.distToLidarF(front_dist)
+        self.lidar_r = self.distToLidarR(right_dist)
+        self.magnetometer = self.thetaToMag(self.th)
 
 
     def apriori(self, wl, wr):
@@ -217,26 +261,40 @@ class PaperBot:
         # Get estimated sensor measurements from state
         estimates = self.est_sensors.ret(self.x, self.y, self.th)
         # TODO I changed what estimates returns to account for min(x/cos, y/sin) type of thing for gradients
-            # TODO update accordingly
-        
+        # TODO update accordingly
+        estF = estimates[0][0]
+		minF = 0
+		if (estF < estimates[0][1]):
+			estF = estimates[0][1]
+			minF = 1
+		
+		estR = estimates[1][0]
+        minR = 0
+		if (estR < estimates[1][1]):
+			estR = estimates[1][1]
+			minR = 1
         # Calculate innovation and its cov
         innovation = np.asarray([self.lidar_f - est_F, self.lidar_r - est_R, self.magnetometer - est_M], float)
         innovation_cov = self.jacH.dot(self.P.dot(self.jacH.T)) + self.Q
-        
-        
-        # Find inverse. TODO narrow down except clause
-        flag = 1
-        while flag:
-            try:
-                Sinv = np.linalg.inv(innovation_cov)
-                flag = 0
-            except:
-                innovation_cov += np.eye(innovation_cov.shape[0]) * 1e-5
-                Sinv = np.eye(innovation_cov.shape[0])
-        
+                
+		innovation_invertible = innovation_cov.copy()
+        det = np.linalg.det(innovation_invertible)
+		eps = 1e5
+        while det == 0:
+			innovation_invertible = innovation_cov + np.eye(3)*eps
+			eps = eps/2
+            det = np.linalg.det(innovation_invertible)
+
+        Sinv = np.linalg.inv(innovation_invertible])        
         # TODO finish off kalman update
-        kalman = self.P.dot(self.jacH.T).dot(Sinv)
-        
+        kalmanGain = self.P.dot(self.jacH.T).dot(Sinv)
+		#state update
+		stateUpdate = kalmanGain.dot(innovation)
+        self.x += stateUpdate[0]
+		self.y += stateUpdate[1]
+		self.th += stateUpdate[2]
+		#cov update
+		self.P =  (np.eye(3) - kalmanGain.dot(self.jacH)).dot(self.P)
         
     
     def plot_history(self):
@@ -317,7 +375,10 @@ class SensorEstimator:
                     1 - right lidar [a/cos, b/sin] returns both line projections. Only take min. Both needed for gradient
                     2 - Angle estimate (which is angle) but with added noise
         """
-        return [self.front_lidar(X, Y, Th), self.right_lidar(X, Y, Th), Th + np.random.normal(0, 0.15)] # TODO remove noise?
+        #note we go from actual distance to lidar distance
+        front_lidar_projections = [self.distToLidarR(d) for d in self.front_lidar(X, Y, Th) ]
+        right_lidar_projections = [self.distToLidarF(d) for d in self.right_lidar(X, Y, Th) ] 
+        return [front_lidar_projections, rightt_lidar_projections, self.magnetomer(Th)] 
 
 
     def front_lidar(self, X, Y, Th):
