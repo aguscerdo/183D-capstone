@@ -298,6 +298,6 @@ void kalman(int pwmL, int pwmR, float lidarF, float lidarR, float mag, int id) {
   M.Copy(cov_est, 3,3, tmp2);
   M.Multiply(tmp1, tmp2, 3,3,3, cov_est);
   
-  sprintf(Ktext, "Kalman: X: predict then measurement update (x,y,theta)=(%f,%f,%f)->(%f,%f,%f, zest=(Lr,Lf,M)=(%f,%f,%f), u=(ul,ur)=(%d,%d)", predX[0],predX[1],predX[2], X_est[0], X_est[1], X_est[2], z_est[0], z_est[1], z_est[2], pwmL, pwmR );
-  wsSend(id, Ktext);
+  //sprintf(Ktext, "Kalman: X: predict then measurement update (x,y,theta)=(%f,%f,%f)->(%f,%f,%f, zest=(Lr,Lf,M)=(%f,%f,%f), u=(ul,ur)=(%d,%d)", predX[0],predX[1],predX[2], X_est[0], X_est[1], X_est[2], z_est[0], z_est[1], z_est[2], pwmL, pwmR );
+  //wsSend(id, Ktext);
 }

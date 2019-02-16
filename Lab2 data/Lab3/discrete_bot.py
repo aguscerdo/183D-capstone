@@ -15,11 +15,28 @@ class DiscreteBot:
 		
 		self.p_error=p_error
 		
+		# 2.1.a
 		self.S = np.zeros((L, W))   # N_s = W * L
 		self.build_grid()
+		
+		self.policy_grid = np.zeros((L, W, 12, 2))
+		self.build_policy_grid()
+	
+	
+	def add_history(self):
+		self.history.append([self.x, self.y, self.h])
+	
+	def update_h(self, h):
+		if h < 0:
+			h += 12
+		self.h = h % 12
 	
 	
 	def build_grid(self):
+		"""
+		2.2.a: Build grid values
+		:return:
+		"""
 		for i in range(self.L):
 			self.S[i, 0] = -100
 			self.S[i, self.W-1] = -100
@@ -27,21 +44,28 @@ class DiscreteBot:
 			self.S[0, 1] = -100
 			self.S[self.L-1, 0] = -100
 		
-		self.S[3, 3] = self.S[3, 4] = -1
+		self.S[3, 3] = self.S[3, 4] = -10
 		self.S[4, 4] = 1
 		
 	
-	def add_history(self):
-		self.history.append([self.x, self.y, self.h])
-	
-	
-	def update_h(self, h):
-		if h < 0:
-			h += 12
-		self.h = h % 12
+	# ~~~~~~ Helpers for movement and prediction ~~~~~~~~~
 	
 	@staticmethod
 	def heading_to_direction(h_s):
+		"""
+		Transforms a heading into quadrant and edge
+		
+		Quadrants: 0, +Y | 1, +X | 2, -Y | 3, -X
+		Edges: -1, one left of axis | 0, on axis | +1, one right of axis
+		
+		e.g.    10 -> Q3, E1
+				3 -> Q1, E0
+				4 -> Q1, E1
+				5 -> Q2, E-1
+		
+		:param h_s: heading
+		:return:
+		"""
 		h = h_s
 		if h in [11, 0, 1]:
 			ret0 = 0
@@ -70,6 +94,46 @@ class DiscreteBot:
 		else:
 			return False
 	
+	
+	def move(self, movement, turning):
+		"""
+		2.1.b
+		Action Space Options:
+		- Do nothing, 1
+		- Turning, 3 (left, right, inplace)
+		- Move, 2 (Front, Back)
+
+		N_a = 1 + 3*2
+
+		:param movement: (int) -1 backwards, 0 in place, +1 front
+		:param turning: (int) -1 turn left, 0 in place, +1 right
+		:return:
+		"""
+		if movement == 0:
+			return
+		
+		err = np.random.uniform(0, 1)
+		if err < self.p_error:
+			# Turn -1
+			self.update_h(self.h - 1)
+		elif err < self.p_error * 2:
+			# Turn +1
+			self.update_h(self.h + 1)
+		
+		h, _ = self.heading_to_direction(self.h)
+		
+		if h == 0:
+			wall = self.update_y(movement * 1)
+		elif h == 1:
+			wall = self.update_x(movement * 1)
+		elif h == 2:
+			wall = self.update_y(movement * -1)
+		else:
+			wall = self.update_x(movement * -1)
+		
+		self.update_h(self.h + turning)
+	
+	
 	@staticmethod
 	def state_difference(x_s, y_s, h_s, x_target, y_target, h_target):
 		return x_target - x_s, y_target - y_s, h_target - h_s
@@ -77,7 +141,7 @@ class DiscreteBot:
 	
 	def move_probability(self, x_s, y_s, h_s, movement, turning, x_target, y_target, h_target):
 		"""
-		Solution 2.1.c: Receives state and input and returns probability
+		2.1.c: Receives state and input and returns probability
 		
 		:param x_s: initial state x
 		:param y_s: initial state y
@@ -284,43 +348,65 @@ class DiscreteBot:
 		"""
 		return self.S[x_s, y_s]
 	
-	
-	def move(self, movement, turning):
+
+	# TODO policy gridding
+	def build_policy_grid(self):
 		"""
-		Action Space Options:
-		- Do nothing, 1
-		- Turning, 3 (left, right, inplace)
-		- Move, 2 (Front, Back)
-		
-		N_a = 1 + 3*2
-		
-		:param movement: (int) -1 backwards, 0 in place, +1 front
-		:param turning: (int) -1 turn left, 0 in place, +1 right
+		2.3.a
 		:return:
 		"""
-		if movement == 0:
-			return
+		goal = (4, 4)
+		def dist_to_goal(xs, ys, hs):
+			return goal[0] - xs, goal[1] - ys
 		
-		err = np.random.uniform(0, 1)
-		if err < self.p_error:
-			# Turn -1
-			self.update_h(self.h - 1)
-		elif err < self.p_error * 2:
-			# Turn +1
-			self.update_h(self.h + 1)
+		# Policy: if infront, move front
+		tmp_helper = np.ones_like(self.policy_grid.shape[0:2])
+		tmp_helper[goal[0], goal[1], :] = np.zeros(12)
 		
-		h, _ = self.heading_to_direction(self.h)
+		queue = [(goal[0], goal[1])]
 		
-		if h == 0:
-			wall = self.update_y(movement*1)
-		elif h == 1:
-			wall = self.update_x(movement*1)
-		elif h == 2:
-			wall = self.update_y(movement*-1)
-		else:
-			wall = self.update_x(movement*-1)
-		
-		self.update_h(self.h + turning)
+		while len(queue):
+			x, y = queue[0]
+			queue = queue[1:]
+			if not (0 <= x < tmp_helper.shape[0] and 0 <= y < tmp_helper.shape[1]):
+				continue
+			
+			if not tmp_helper[x, y]:
+				continue
+			for h in range(0, 12):
+
+				tmp_helper[x, y, h] = 0
+				
+				dx, dy = dist_to_goal(x, y, h)
+				mov, rot = 0, 0
+				
+				if abs(dx)+abs(dy) == 1:    # One block away
+					h_dir, h_edge = self.heading_to_direction(h)
+					
+					if dx == 1 or dx == -1: # In front
+						if h_dir == 1:
+							mov = 1
+							rot = 1 - h_edge
+						elif h_dir == 3:
+							mov  = -1
+							rot = 1 - h_edge
+						elif h_dir == 0:
+							mov = 1
+							rot = 1
+						else: # h_dir == 2
+							mov = 1
+							rot = -1
+						
+						mov *= dx   # +- X cases are equal except for mov sign
+						
+				
+				self.policy_grid[x, y, h, :] = [mov, rot]
+			for di in [-1, 0, 1]:
+				for dj in [-1, 0, 1]:
+					queue.append((x+di, y+dj))
+						
+					
+				
 		
 		
 		
