@@ -19,7 +19,7 @@ class DiscreteBot:
 		self.S = np.zeros((L, W))   # N_s = W * L
 		self.build_grid()
 		
-		self.policy_grid = np.zeros((L, W, 12, 2))
+		self.policy_grid = np.zeros((L, W, 12))
 		self.build_policy_grid()
 	
 	
@@ -357,88 +357,48 @@ class DiscreteBot:
 		"""
 		goal = (4, 4)
 		#new policy, we always turn
-		#Quadrants: 0, +Y | 1, +X | 2, -Y | 3, -X
-		direction = heading_to_direction(hs)
-		# get move direction, -1 => back, 1 => fwd
-		# get turn direction, -1 => left, 1 => right, 0 => don't turn
-		moveDirection = 0
-		turnDirection = 0
-		if (direction == 0):
-			#+y, 
-			#if goal has greater or same y then move forward else backward
-			moveDirection = 1*(goal[1] >= self.y) + -1*(goal[1] < self.y)
-			#if goal to "left", then we have greater x coord
-			turnDirection = -1*(goal[0] < self.x) + 1*(goal[0] > self.x)
-		elif (direction == 1):
-			#+x, 
-			#if goal has greater or same x then move forward else backward
-			moveDirection = 1*(goal[0] >= self.x) + -1*(goal[0] < self.x)
-			#if goal to "left", then we have lesser y coord
-			turnDirection = -1*(goal[1] > self.y) + 1*(goal[1] < self.y)
-		elif (direction == 2):
-			#-y, 
-			#if goal has lesser or same y then move forward else backward
-			moveDirection = 1*(goal[1] <= self.y) + -1*(goal[1] > self.y)
-			#if goal to "left", then we have lesser x coord
-			turnDirection = -1*(goal[0] > self.x) + 1*(goal[0] < self.x)
-		else:
-			#-x, 
-			#if goal has lesser or same x then move forward else backward
-			moveDirection = 1*(goal[0] <= self.x) + -1*(goal[0] > self.x)
-			#if goal to "left", then we have greater y coord
-			turnDirection = -1*(goal[1] < self.y) + 1*(goal[1] > self.y)
-		
-		#old policy
-		"""
-		def dist_to_goal(xs, ys, hs):
-			return goal[0] - xs, goal[1] - ys
-		
-		# Policy: if infront, move front
-		tmp_helper = np.ones_like(self.policy_grid.shape[0:2])
-		tmp_helper[goal[0], goal[1], :] = np.zeros(12)
-		
-		queue = [(goal[0], goal[1])]
-		
-		while len(queue):
-			x, y = queue[0]
-			queue = queue[1:]
-			if not (0 <= x < tmp_helper.shape[0] and 0 <= y < tmp_helper.shape[1]):
-				continue
-			
-			if not tmp_helper[x, y]:
-				continue
-			for h in range(0, 12):
+		def greedy_policy(state):
+			xs = state[0]
+			ys = state[1]
+			hs = state[2]
+			#Quadrants: 0, +Y | 1, +X | 2, -Y | 3, -X
+			direction = heading_to_direction(hs)
+			# get move direction, -1 => back, 1 => fwd
+			# get turn direction, -1 => left, 1 => right, 0 => don't turn
+			moveDirection = 0
+			turnDirection = 0
+			if (direction == 0):
+				#+y, 
+				#if goal has greater or same y then move forward else backward
+				moveDirection = 1*(goal[1] >= ys) + -1*(goal[1] < ys)
+				#if goal to "left", then we have greater x coord
+				turnDirection = -1*(goal[0] < xs) + 1*(goal[0] > xs)
+			elif (direction == 1):
+				#+x, 
+				#if goal has greater or same x then move forward else backward
+				moveDirection = 1*(goal[0] >= xs) + -1*(goal[0] < xs)
+				#if goal to "left", then we have lesser y coord
+				turnDirection = -1*(goal[1] > ys) + 1*(goal[1] < ys)
+			elif (direction == 2):
+				#-y, 
+				#if goal has lesser or same y then move forward else backward
+				moveDirection = 1*(goal[1] <= ys) + -1*(goal[1] > ys)
+				#if goal to "left", then we have lesser x coord
+				turnDirection = -1*(goal[0] > xs) + 1*(goal[0] < xs)
+			else:
+				#-x, 
+				#if goal has lesser or same x then move forward else backward
+				moveDirection = 1*(goal[0] <= xs) + -1*(goal[0] > xs)
+				#if goal to "left", then we have greater y coord
+				turnDirection = -1*(goal[1] < ys) + 1*(goal[1] > ys)
+			return [moveDirection, turnDirection]
+		for i in range(L):
+			for j in range(W):
+				for h in range(12):
+					state = [i, j, h]
+					action = greedy_policy(state)
+					self.policy_grid[i, j, h] = action
 
-				tmp_helper[x, y, h] = 0
-				
-				dx, dy = dist_to_goal(x, y, h)
-				mov, rot = 0, 0
-				
-				if abs(dx)+abs(dy) == 1:    # One block away
-					h_dir, h_edge = self.heading_to_direction(h)
-					
-					if dx == 1 or dx == -1: # In front
-						if h_dir == 1:
-							mov = 1
-							rot = 1 - h_edge
-						elif h_dir == 3:
-							mov  = -1
-							rot = 1 - h_edge
-						elif h_dir == 0:
-							mov = 1
-							rot = 1
-						else: # h_dir == 2
-							mov = 1
-							rot = -1
-						
-						mov *= dx   # +- X cases are equal except for mov sign
-						
-				
-				self.policy_grid[x, y, h, :] = [mov, rot]
-			for di in [-1, 0, 1]:
-				for dj in [-1, 0, 1]:
-					queue.append((x+di, y+dj))
-		"""
 						
 					
 				
