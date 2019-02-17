@@ -306,7 +306,7 @@ class DiscreteBot:
 		if movement == 0:
 			return None
 		elif not (0<= x_s < self.L and 0<= y_s < self.W):
-			return x_s, y_s
+			return None
 		
 		if h_s > 12:
 			h_s = h_s % 12
@@ -513,23 +513,34 @@ class DiscreteBot:
 		self.value_grid = np.ones((self.L, self.W, 12)) * (-sys.maxsize - 1)
 		mmin = (-sys.maxsize - 1)
 		
-		def recursive_value(xs, ys, hs):
+		def recursive_value(xs, ys, hs, rec_hist):
 			if xs == self.goal[0] and ys == self.goal[1]:
 				return self.reward(xs, ys)
 			if self.value_grid[xs, ys, hs] > mmin:
 				return self.value_grid[xs, ys, hs]
 			
+			for hh in rec_hist:
+				if hh[0] == xs and hh[1] == ys and hh[2] == hs:
+					return self.reward(xs, ys)
+			
+			N = min(len(rec_hist), 10)
+			rec_hist = [[xs, ys, hs]] + rec_hist[:N]
 			
 			mov = self.policy_grid[xs, ys, hs]
 			mov, turn = mov[0], mov[1]
 			
 			xs2, ys2, hs2 = self.next_state(xs, ys, hs, mov, turn)
-			return self.reward(xs, ys) + discount_factor * recursive_value(xs2, ys2, hs2)
+			
+			# print(xs, ys, hs, '~~~',  xs2, ys2, hs2, '~~~', mov, turn)
+			if xs2 == xs and ys2 == ys and hs2 == hs:
+				return self.reward(xs, ys)
+			
+			return self.reward(xs, ys) + discount_factor * recursive_value(xs2, ys2, hs2, rec_hist)
 		
 		for x in range(self.L):
 			for y in range(self.W):
 				for h in range(12):
-					self.value_grid[x, y, h] = recursive_value(x, y, h)
+					self.value_grid[x, y, h] = recursive_value(x, y, h, [])
 
 		return self.value_grid
 			
@@ -597,18 +608,21 @@ class DiscreteBot:
 		self.build_policy_grid()
 		self.build_value_grid(discount_factor)
 		
-		prev = np.copy(self.lookahead_grid)
+		print('Lookahead: 0')
+		prev_hash = hash(self.lookahead_grid.tobytes())
 		self.build_lookahead_grid(self.value_grid, discount_factor)
 		self.build_value_grid(discount_factor, self.lookahead_grid)
-		
+		new_hash = hash(self.lookahead_grid.tobytes())
+
 		i = 0
-		while not np.array_equal(prev, self.lookahead_grid):
+		while not prev_hash == new_hash:
 			i += 1
 			print('Lookahead: {}'.format(i))
-			prev = np.copy(self.lookahead_grid)
+			prev_hash = new_hash
 			self.build_lookahead_grid(self.value_grid, discount_factor)
 			self.build_value_grid(discount_factor, self.lookahead_grid)
-		
+			new_hash = hash(self.lookahead_grid.tobytes())
+
 		if x0:
 			self.x = x0
 		if y0:
