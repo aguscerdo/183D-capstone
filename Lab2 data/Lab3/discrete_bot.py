@@ -356,6 +356,40 @@ class DiscreteBot:
 		:return:
 		"""
 		goal = (4, 4)
+		#new policy, we always turn
+		#Quadrants: 0, +Y | 1, +X | 2, -Y | 3, -X
+		direction = heading_to_direction(hs)
+		# get move direction, -1 => back, 1 => fwd
+		# get turn direction, -1 => left, 1 => right, 0 => don't turn
+		moveDirection = 0
+		turnDirection = 0
+		if (direction == 0):
+			#+y, 
+			#if goal has greater or same y then move forward else backward
+			moveDirection = 1*(goal[1] >= self.y) + -1*(goal[1] < self.y)
+			#if goal to "left", then we have greater x coord
+			turnDirection = -1*(goal[0] < self.x) + 1*(goal[0] > self.x)
+		elif (direction == 1):
+			#+x, 
+			#if goal has greater or same x then move forward else backward
+			moveDirection = 1*(goal[0] >= self.x) + -1*(goal[0] < self.x)
+			#if goal to "left", then we have lesser y coord
+			turnDirection = -1*(goal[1] > self.y) + 1*(goal[1] < self.y)
+		elif (direction == 2):
+			#-y, 
+			#if goal has lesser or same y then move forward else backward
+			moveDirection = 1*(goal[1] <= self.y) + -1*(goal[1] > self.y)
+			#if goal to "left", then we have lesser x coord
+			turnDirection = -1*(goal[0] > self.x) + 1*(goal[0] < self.x)
+		else:
+			#-x, 
+			#if goal has lesser or same x then move forward else backward
+			moveDirection = 1*(goal[0] <= self.x) + -1*(goal[0] > self.x)
+			#if goal to "left", then we have greater y coord
+			turnDirection = -1*(goal[1] < self.y) + 1*(goal[1] > self.y)
+		
+		#old policy
+		"""
 		def dist_to_goal(xs, ys, hs):
 			return goal[0] - xs, goal[1] - ys
 		
@@ -404,6 +438,7 @@ class DiscreteBot:
 			for di in [-1, 0, 1]:
 				for dj in [-1, 0, 1]:
 					queue.append((x+di, y+dj))
+		"""
 						
 					
 				
