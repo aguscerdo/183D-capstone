@@ -24,6 +24,7 @@ class DiscreteBot:
 		self.goal = (4,4)
 		
 		self.value_grid = np.ones((L, W, 12)) * (-sys.maxsize - 1)
+		self.lookahead_grid = np.zeros_like(self.policy_grid)
 
 	
 	def add_history(self):
@@ -531,7 +532,33 @@ class DiscreteBot:
 
 
 
-		
-		
-		
+	def build_lookahead_grid(self):
+		pass
 	
+	
+	def simulate_trajectory_lookahead(self, discount_factor, x0=None, y0=None, h0=None, p_error=None, goal=None, match_h=False):
+		"""
+		2.3.g
+		:return:
+		"""
+		self.build_lookahead_grid()
+		self.build_value_grid(discount_factor)
+		
+		if x0:
+			self.x = x0
+		if y0:
+			self.y = y0
+		if h0:
+			self.h = h0
+		if p_error:
+			self.p_error = p_error
+		if goal:
+			self.goal = goal
+		
+		self.add_history()
+		
+		while not (self.x == self.goal[0] and self.y == self.goal[1]) and not (match_h and self.h == self.goal[2]):
+			mov = self.lookahead_grid[self.x, self.y, self.h]
+			mov, turn = mov[0], mov[1]
+			self.move(mov, turn)
+			self.add_history()
