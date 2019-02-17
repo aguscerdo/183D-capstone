@@ -43,9 +43,14 @@ class DiscreteBot:
 			self.S[0, i] = -100
 			self.S[self.L-1, i] = -100
 		
-		self.S[3, 3] = self.S[3, 4] = -10
-		self.S[-2, -2] = 1
-		
+		batch = [[3, 3, -10], [3, 4, -10], [-2, -2, 1]]
+		self.__state_add_batch(batch)
+	
+	
+	def __state_add_batch(self, batch):
+		for b in batch:
+			self.S[b[0], b[1]] = b[2]
+	
 	
 	# ~~~~~~ Helpers for movement and prediction ~~~~~~~~~
 	
@@ -301,7 +306,7 @@ class DiscreteBot:
 		if movement == 0:
 			return None
 		elif not (0<= x_s < self.L and 0<= y_s < self.W):
-			return None
+			return x_s, y_s
 		
 		if h_s > 12:
 			h_s = h_s % 12
@@ -321,7 +326,17 @@ class DiscreteBot:
 					
 		next_state = np.unravel_index(np.argmax(prob), prob.shape)
 		nx = x_s + next_state[0] - 1
+		if nx < 0:
+			nx = 0
+		elif nx >= self.L:
+			nx = self.L-1
+	
 		ny = y_s + next_state[1] - 1
+		if ny < 0:
+			ny = 0
+		elif ny >= self.W:
+			ny = self.W-1
+			
 		nh = h_s + next_state[2] - 2
 		if nh < 0: nh += 12
 		nh = nh % 12
@@ -496,7 +511,7 @@ class DiscreteBot:
 			
 		# Initialize to -INT (-infinity)
 		self.value_grid = np.ones((self.L, self.W, 12)) * (-sys.maxsize - 1)
-		mmin = np.min(self.value_grid)
+		mmin = (-sys.maxsize - 1)
 		
 		def recursive_value(xs, ys, hs):
 			if xs == self.goal[0] and ys == self.goal[1]:
@@ -546,7 +561,7 @@ class DiscreteBot:
 					for k in range(12):
 						val_plus_reward[i, j, k] += self.reward(i, j)
 			# TODO change this later, initialise to neg inf or something
-			bestVal = -1
+			bestVal = -sys.maxsize -1
 			bestAction = [0, 0]
 			# sum_s' p(s,a,s') * val_plus_reward
 			for i in range(2):
@@ -558,7 +573,9 @@ class DiscreteBot:
 					for ii in range(self.L):
 						for jj in range(self.W):
 							for hh in range(12):
-								value_by_action[i,j] += self.move_probability(state[0], state[1], state[2], action_mov, action_turn, ii, jj, hh)
+								value_by_action[i,j] += self.move_probability(state[0], state[1], state[2],
+								                                              action_mov, action_turn, ii, jj, hh) \
+								                        * val_plus_reward[ii, jj, hh]
 					if (value_by_action[i, j] > bestVal):
 						bestVal = value_by_action[i, j]
 						bestAction = action_mov, action_turn
@@ -568,18 +585,29 @@ class DiscreteBot:
 			for j in range(self.W):
 				for h in range(12):
 					c_state = [i, j, h]
-					print(c_state)
-					action = onesteplookahead(c_state)
-					self.lookahead_grid[i, j, h, :] = action
-
+					self.lookahead_grid[i, j, h, :] = onesteplookahead(c_state)
+		
 	
 	def simulate_trajectory_lookahead(self, discount_factor, x0=None, y0=None, h0=None, p_error=None, goal=None, match_h=False):
 		"""
 		2.3.g
 		:return:
 		"""
-		self.build_lookahead_grid(self.value_grid, discount_factor)
+		self.build_state_grid()
+		self.build_policy_grid()
 		self.build_value_grid(discount_factor)
+		
+		prev = np.copy(self.lookahead_grid)
+		self.build_lookahead_grid(self.value_grid, discount_factor)
+		self.build_value_grid(discount_factor, self.lookahead_grid)
+		
+		i = 0
+		while not np.array_equal(prev, self.lookahead_grid):
+			i += 1
+			print('Lookahead: {}'.format(i))
+			prev = np.copy(self.lookahead_grid)
+			self.build_lookahead_grid(self.value_grid, discount_factor)
+			self.build_value_grid(discount_factor, self.lookahead_grid)
 		
 		if x0:
 			self.x = x0
@@ -594,18 +622,16 @@ class DiscreteBot:
 		
 		self.history = []
 		self.add_history()
+		print('MOVING')
 		while not (self.x == self.goal[0] and self.y == self.goal[1]) and not (match_h and self.h == self.goal[2]):
 			mov = self.lookahead_grid[self.x, self.y, self.h]
 			mov, turn = mov[0], mov[1]
 			self.move(mov, turn)
 			self.add_history()
-			self.plot_grid()
+			# self.plot_grid()
 	
 	
 	def run_23h(self):
-		self.build_state_grid()
-		self.build_policy_grid()
-		
 		self.simulate_trajectory_lookahead(0.9, 1, 4, 6, 0.0, (4,4), False)
 		self.plot_grid()
 		
