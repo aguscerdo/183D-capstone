@@ -362,24 +362,24 @@ class DiscreteBot:
 			ys = state[1]
 			hs = state[2]
 			#Quadrants: 0, +Y | 1, +X | 2, -Y | 3, -X
-			direction = heading_to_direction(hs)
+			direction = self.heading_to_direction(hs)
 			# get move direction, -1 => back, 1 => fwd
 			# get turn direction, -1 => left, 1 => right, 0 => don't turn
 			moveDirection = 0
 			turnDirection = 0
-			if (direction == 0):
+			if direction == 0:
 				#+y, 
 				#if goal has greater or same y then move forward else backward
 				moveDirection = 1*(goal[1] >= ys) + -1*(goal[1] < ys)
 				#if goal to "left", then we have greater x coord
 				turnDirection = -1*(goal[0] < xs) + 1*(goal[0] > xs)
-			elif (direction == 1):
+			elif direction == 1:
 				#+x, 
 				#if goal has greater or same x then move forward else backward
 				moveDirection = 1*(goal[0] >= xs) + -1*(goal[0] < xs)
 				#if goal to "left", then we have lesser y coord
 				turnDirection = -1*(goal[1] > ys) + 1*(goal[1] < ys)
-			elif (direction == 2):
+			elif direction == 2:
 				#-y, 
 				#if goal has lesser or same y then move forward else backward
 				moveDirection = 1*(goal[1] <= ys) + -1*(goal[1] > ys)
@@ -392,16 +392,65 @@ class DiscreteBot:
 				#if goal to "left", then we have greater y coord
 				turnDirection = -1*(goal[1] < ys) + 1*(goal[1] > ys)
 			return [moveDirection, turnDirection]
-		for i in range(L):
-			for j in range(W):
+		
+		for i in range(self.L):
+			for j in range(self.W):
 				for h in range(12):
 					state = [i, j, h]
 					action = greedy_policy(state)
-					self.policy_grid[i, j, h] = action
+					self.policy_grid[i, j, h, :] = action
+	
+	
+	
+	def simulate_trajectory(self, x0=None, y0=None, h0=None, p_error=None, goal=None, match_h=False):
+		"""
+		Initiates movement given policy grid.
+		While the goal has not been reached, take the appropriate policy action, move according to it and add to history
 
-						
-					
-				
+
+		:param x0: initial state x
+		:param y0: initial state y
+		:param h0: initial state h
+		:param p_error: probability of error
+		:param goal: target x, y
+		:param match_h: match the heading as goal
+		:return:
+		"""
+		if x0: self.x = x0
+		if y0: self.y = x0
+		if h0: self.h = x0
+		if p_error: self.p_error = x0
+		if goal: self.goal = goal
 		
+		self.add_history()
+		
+		while not (self.x == self.goal[0] and self.y == self.goal[1] and (not match_h and self.h == self.goal[2])):
+			mov, turn = self.policy_grid[self.x, self.y, self.h]
+			self.move(mov, turn)
+			self.add_history()
+		
+		np_hist = np.asarray(self.history)
+		xh = np_hist[:, 0]
+		yh = np_hist[:, 1]
+		hh = np_hist[:, 2]
+		th = np.arange(0, np_hist.shape[0])
+		
+		plt.scatter(xh, yh, c=th, cmap='RdBl')
+		plt.xlim([-1, self.L + 1])
+		plt.ylim([-1, self.W + 1])
+		
+		lx = [0, self.L, self.L, 0, 0]
+		ly = [0, 0, self.W, self.W, 0]
+		plt.plot(lx, ly, c='k')
+		
+		plt.grid(True, 'both', 'both')
+		plt.show()
+	
+	def run_23c(self):
+		"""
+		2.3.c run the given simulation
+		:return:
+		"""
+		self.simulate_trajectory(1, 4, 6, 0, (4, 4))
 		
 		
