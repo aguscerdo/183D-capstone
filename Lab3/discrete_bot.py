@@ -530,6 +530,45 @@ class DiscreteBot:
 		value = self.value_grid(x, y, h)
 		print('Cost of {}, {}, {}: {}'.format(x, y, h, value))
 
+	def build_lookahead_grid(self,value_function, discount_factor):
+		# 2.3.f
+		# policy(s)= argmax_a (sum_s' p(s,a,s')*(r(s')+discount*V(s')) )
+		def onesteplookahead(state):
+			# value_by_action[i][j] = value if action_ij taken
+			# i=0 -> backward=-1, i=1 -> forward=1
+			# j=0 -> left=-1, j=1 -> no turn=0, j=2-> right=1
+			value_by_action = np.zeros([2,3])
+			val_plus_reward = discount_factor * value_function 
+			for i in range(L):
+				for j in range(W):
+					for k in range(12):
+						val_plus_reward[i, j, k] += self.reward(i, j)
+			# TODO change this later, initialise to neg inf or something
+			bestVal = -1
+			bestAction = [0, 0]
+			# sum_s' p(s,a,s') * val_plus_reward
+			for i in range(2):
+				for j in range(3):
+					value_by_action[i, j] = 0 
+					action_mov = 2*i-1 # i=0 -> backward=-1, i=1 -> forward=1
+					action_turn = j-1
+					# now loop over all states s'
+					for ii in range(L):
+						for jj in range(W):
+							for hh in range(12):
+								value_by_action[i,j] += self.move_probability(state[0], state[1], state[2], action_mov, action_turn, ii, jj, hh)
+					if (values[i, j] > bestVal):
+						bestVal = value_by_action[i, j]
+						bestAction = action_mov, action_turn
+			return bestAction
+		for i in range(self.L):
+			for j in range(self.W):
+				for h in range(12):
+					state = [i, j, h]
+					action = onesteplookahead(state)
+					self.lookahead_grid[i, j, h, :] = action
+
+
 
 
 	def build_lookahead_grid(self):
