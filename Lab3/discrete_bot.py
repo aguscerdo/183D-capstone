@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import sys
 
 class DiscreteBot:
 	def __init__(self, W, L, x0=0, y0=0, h0=0, p_error=0.0):
@@ -22,8 +23,8 @@ class DiscreteBot:
 		self.build_policy_grid()
 		self.goal = (4,4)
 		
-		self.value_grid = np.ones((L, W, 12)) * (np.min(self.S) - 1)
-	
+		self.value_grid = np.ones((L, W, 12)) * (-sys.maxsize - 1)
+
 	
 	def add_history(self):
 		self.history.append([self.x, self.y, self.h])
@@ -221,7 +222,69 @@ class DiscreteBot:
 				ret = self.__prob_heading_helper(turning, dh, h_edge, mode=2)
 		
 		return float(ret)
+	
+	def __prob_heading_helper(self, turning, dh, heading_edge, mode=0):
+		"""
+		Helper with lots of if statements
+		:param turning: turning input
+		:param dh: difference from current to target heading
+		:param heading_edge: which edge of the heading is it on (0, 1, 2) -> (left, center, right)
+		:param mode: mode to run on (0, 1, 2) ->
+						on central heading moving forward, on edge moving forward, on other heading edge moving forward)
+		:return: probability
+		"""
+		dh_abs = np.abs(dh)
+		ret = 0
+		p_err = self.p_error
+		comp_err = 1 - 2 * self.p_error
 		
+		
+		# Heading is straight up
+		if mode == 0:
+			if turning == 0:
+				ret = p_err * (dh_abs == 1) + comp_err * (dh == 0)
+				
+			elif turning == -1:
+				ret = p_err * (dh == -2 or dh == 0) + comp_err * (dh == -1)
+			elif turning == 1:
+				ret = p_err * (dh == -2 or dh == 0) + comp_err * (dh == 1)
+		
+		# Heading is an edge <-1  +1> but want to forward block
+		elif mode == 1:
+			if turning == 0:  # No turning
+				if heading_edge == 0:  # Left edge
+					ret = comp_err * (dh == 0) + p_err * (dh == 1)
+				
+				elif heading_edge == 2:
+					ret = comp_err * (dh == 0) + p_err * (dh == -1)
+			
+			elif turning == 1:
+				if heading_edge == 0:
+					ret = comp_err * (dh == 1) + p_err * (dh == 2)
+				
+				if heading_edge == 2:
+					ret = comp_err * (dh == 1) + p_err * (dh == 0)
+			
+			elif turning == -1:
+				if heading_edge == 0:
+					ret = comp_err * (dh == -1) + p_err * (dh == 0)
+				elif heading_edge == 2:
+					ret = comp_err * (dh == -1) + p_err * (dh == -2)
+		
+		elif mode == 2:  # On an edge of another heading
+			if turning == 0:
+				if (heading_edge == 2 and dh == 1) or (heading_edge == 0 and dh == -1):
+					ret = self.p_error
+			
+			elif turning == 1:
+				if (heading_edge == 2 and dh == 2) or (heading_edge == 0 and dh == 0):
+					ret = self.p_error
+			
+			elif turning == -1:
+				if (heading_edge == 2 and dh == 0) or (heading_edge == 0 and dh == -2):
+					ret = self.p_error
+		
+		return float(ret)
 	
 	def next_state(self, x_s, y_s, h_s, movement, turning):
 		"""
@@ -255,91 +318,16 @@ class DiscreteBot:
 					prob[di+1, dj+1, dh+2] = self.move_probability(x_s, y_s, h_s,
 							movement, turning, x_s+di, y_s+dj, h_s+dh)
 					
-		next_state = np.unravel_index(np.argmax(prob, axis=None), prob.shape)
-		return x_s + next_state[0] - 1, y_s + next_state[1] - 1, h_s + next_state[2] - 2
+		next_state = np.unravel_index(np.argmax(prob), prob.shape)
+		nx = x_s + next_state[0] - 1
+		ny = y_s + next_state[1] - 1
+		nh = h_s + next_state[2] - 2
+		if nh < 0: nh += 12
+		nh = nh % 12
+		
+		return nx, ny, nh
 	
 	
-	def __prob_heading_helper(self, turning, dh, heading_edge, mode=0):
-		"""
-		Helper with lots of if statements
-		:param turning: turning input
-		:param dh: difference from current to target heading
-		:param heading_edge: which edge of the heading is it on (0, 1, 2) -> (left, center, right)
-		:param mode: mode to run on (0, 1, 2) ->
-						on central heading moving forward, on edge moving forward, on other heading edge moving forward)
-		:return: probability
-		"""
-		dh_abs = np.abs(dh)
-		ret = 0
-		# Heading is straight up
-		if mode == 0:
-			if turning == 0:
-				if dh_abs == 1:
-					ret = self.p_error
-				else:
-					ret = 1 - 2*self.p_error
-			elif turning == -1:
-				if dh == -2 or dh == 0:
-					ret = self.p_error
-				elif dh == -1:
-					ret = 1 - 2 * self.p_error
-
-			else:
-				if dh == 2 or dh == 0:
-					ret = self.p_error
-				elif dh == 1:
-					ret = 1 - 2 * self.p_error
-					
-		# Heading is an edge <-1  +1> but went to forward block
-		elif mode == 1:
-			if turning == 0:    # No turning
-				if heading_edge == 0:   # Left edge
-					if dh == 0:
-						ret = 1 - 2*self.p_error
-					elif dh == 1:
-						ret = self.p_error
-
-						
-				elif heading_edge == 2:
-					if dh == 0:
-						ret = 1 - 2*self.p_error
-					elif dh == -1:
-						ret = self.p_error
-
-			elif turning == 1:
-				if heading_edge == 0:
-					if dh == 1:
-						ret = 1 - 2*self.p_error
-					elif dh == 2:
-						ret = self.p_error
-
-				if heading_edge == 2:
-					if dh == 0:
-						ret = 1 - 2*self.p_error
-					elif dh == -1:
-						ret = self.p_error
-
-			elif turning == -1:
-				if heading_edge == 0:
-					if dh == -1:
-						ret = 1 - 2*self.p_error
-					elif dh == -2:
-						ret = self.p_error
-						
-		elif mode == 2: # On an edge of another heading
-			if turning == 0:
-				if (heading_edge == 2 and dh == 1) or (heading_edge == 0 and dh == -1):
-					ret = self.p_error
-
-			elif turning == 1:
-				if (heading_edge == 2 and dh == 2) or (heading_edge == 0 and dh == 0):
-					ret = self.p_error
-
-			elif turning == -1:
-				if (heading_edge == 2 and dh == 0) or (heading_edge == 0 and dh == -2):
-					ret = self.p_error
-
-		return float(ret)
 		
 	
 	def reward(self, x_s, y_s):
@@ -497,41 +485,48 @@ class DiscreteBot:
 		"""
 		2.3.d
 		Returns a value matrix given a policy
-		:param discount_factor:
-		:param policy_matrix:
+		:param discount_factor: lambda to discount horizon
+		:param policy_matrix: policy matrix to use. If none, use self matrix
 		:return:
 		"""
 		if policy_matrix is not None:
 			self.policy_grid = policy_matrix
 			
+		# Initialize to -INT (-infinity)
+		self.value_grid = np.ones((self.L, self.W, 12)) * (-sys.maxsize - 1)
 		mmin = np.min(self.value_grid)
+		
 		def recursive_value(xs, ys, hs):
-
 			if xs == self.goal[0] and ys == self.goal[1]:
 				return self.reward(xs, ys)
 			if self.value_grid[xs, ys, hs] > mmin:
 				return self.value_grid[xs, ys, hs]
 			
-			mov, turn = self.policy_grid[xs, ys, hs, :]
+			
+			mov = self.policy_grid[xs, ys, hs]
+			mov, turn = mov[0], mov[1]
+			
 			xs2, ys2, hs2 = self.next_state(xs, ys, hs, mov, turn)
-			print(xs, ys, hs, '~', xs2, ys2, hs2)
-
 			return self.reward(xs, ys) + discount_factor * recursive_value(xs2, ys2, hs2)
 		
 		for x in range(self.L):
 			for y in range(self.W):
 				for h in range(12):
-					print(x, y, h)
 					self.value_grid[x, y, h] = recursive_value(x, y, h)
 
 		return self.value_grid
 			
 	
 	def run_23d(self):
+		"""
+		2.3.d
+		:return:
+		"""
 		self.build_policy_grid()
 		ret = self.value_function_builder(0.9)
-		for i in ret:
-			print(i)
+
+
+
 		
 		
 		
