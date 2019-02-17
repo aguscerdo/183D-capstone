@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
+import time
 
 class DiscreteBot:
 	def __init__(self, W, L, x0=0, y0=0, h0=0, p_error=0.0):
@@ -602,7 +603,7 @@ class DiscreteBot:
 					self.lookahead_grid[i, j, h, :] = onesteplookahead(c_state)
 		
 	
-	def simulate_trajectory_lookahead(self, discount_factor, x0=None, y0=None, h0=None, p_error=None, goal=None, match_h=False):
+	def policy_iteration(self, discount_factor, x0=None, y0=None, h0=None, p_error=None, goal=None, match_h=False):
 		"""
 		2.3.g
 		:return:
@@ -653,7 +654,7 @@ class DiscreteBot:
 	
 	
 	def run_23h(self):
-		self.simulate_trajectory_lookahead(0.9, 1, 4, 6, 0.0, (4,4), False)
+		self.policy_iteration(0.9, 1, 4, 6, 0.0, (4,4), False)
 		self.plot_grid()
 	
 	def build_value_zero(self):
@@ -727,6 +728,8 @@ class DiscreteBot:
 			self.build_lookahead_grid(self.next_value_grid, discount_factor)
 			#new_hash = hash(self.lookahead_grid.tobytes())
 			new_grid = np.copy(self.lookahead_grid)
+		
+		self.value_grid = np.copy(self.next_value_grid)
 
 		if x0:
 			self.x = x0
@@ -752,3 +755,34 @@ class DiscreteBot:
 	def run_24b(self):
 		self.value_iteration(0.9, 1, 4, 6, 0.0, (4,4), False)
 		self.plot_grid()
+
+	def timing_and_comparison(self):
+		# policy iteration
+		start = [time.time(), time.clock()]
+		self.policy_iteration(0.9, 1, 4, 6, 0.0, (4,4), False)
+		end = [time.time(), time.clock()]
+		print("value iteration time, .clock, .time: ")
+		print (str(end[1] - start[1]) )
+		print (str(end[0] - start[0]) )
+		# save policy/value
+		policyiter_policy = np.copy(self.lookahead_grid)
+		policyiter_value = np.copy(self.value_grid)
+
+		# value iteration
+		start = [time.time(), time.clock()]
+		self.value_iteration(0.9, 1, 4, 6, 0.0, (4,4), False)
+		end = [time.time(), time.clock()]
+		print("value iteration time, .clock, .time: ")
+		print (str(end[1] - start[1]))
+		print (str(end[0] - start[0]))
+		# save policy/value
+		valueiter_policy = np.copy(self.lookahead_grid)
+		valueiter_value = np.copy(self.value_grid)
+
+		# now compare policy
+		if np.array_equal(valueiter_policy, policyiter_policy):
+			print ("Policies from value and policy iteration are equal!")
+		else:
+			mask = np.not_equal(valueiter_policy, policyiter_policy)
+			count_diff = np.sum(mask)
+			print ("They differ by " + str(count_diff) + " elements")
