@@ -418,6 +418,7 @@ class DiscreteBot:
 		if goal:
 			self.goal = goal
 			
+		self.history = []
 		self.add_history()
 		
 		while not (self.x == self.goal[0] and self.y == self.goal[1]) and not (match_h and self.h == self.goal[2]):
@@ -530,6 +531,7 @@ class DiscreteBot:
 		value = self.value_grid(x, y, h)
 		print('Cost of {}, {}, {}: {}'.format(x, y, h, value))
 
+
 	def build_lookahead_grid(self,value_function, discount_factor):
 		# 2.3.f
 		# policy(s)= argmax_a (sum_s' p(s,a,s')*(r(s')+discount*V(s')) )
@@ -539,8 +541,8 @@ class DiscreteBot:
 			# j=0 -> left=-1, j=1 -> no turn=0, j=2-> right=1
 			value_by_action = np.zeros([2,3])
 			val_plus_reward = discount_factor * value_function 
-			for i in range(L):
-				for j in range(W):
+			for i in range(self.L):
+				for j in range(self.W):
 					for k in range(12):
 						val_plus_reward[i, j, k] += self.reward(i, j)
 			# TODO change this later, initialise to neg inf or something
@@ -553,34 +555,30 @@ class DiscreteBot:
 					action_mov = 2*i-1 # i=0 -> backward=-1, i=1 -> forward=1
 					action_turn = j-1
 					# now loop over all states s'
-					for ii in range(L):
-						for jj in range(W):
+					for ii in range(self.L):
+						for jj in range(self.W):
 							for hh in range(12):
 								value_by_action[i,j] += self.move_probability(state[0], state[1], state[2], action_mov, action_turn, ii, jj, hh)
-					if (values[i, j] > bestVal):
+					if (value_by_action[i, j] > bestVal):
 						bestVal = value_by_action[i, j]
 						bestAction = action_mov, action_turn
 			return bestAction
+		
 		for i in range(self.L):
 			for j in range(self.W):
 				for h in range(12):
-					state = [i, j, h]
-					action = onesteplookahead(state)
+					c_state = [i, j, h]
+					print(c_state)
+					action = onesteplookahead(c_state)
 					self.lookahead_grid[i, j, h, :] = action
 
-
-
-
-	def build_lookahead_grid(self):
-		pass
-	
 	
 	def simulate_trajectory_lookahead(self, discount_factor, x0=None, y0=None, h0=None, p_error=None, goal=None, match_h=False):
 		"""
 		2.3.g
 		:return:
 		"""
-		self.build_lookahead_grid()
+		self.build_lookahead_grid(self.value_grid, discount_factor)
 		self.build_value_grid(discount_factor)
 		
 		if x0:
@@ -594,10 +592,20 @@ class DiscreteBot:
 		if goal:
 			self.goal = goal
 		
+		self.history = []
 		self.add_history()
-		
 		while not (self.x == self.goal[0] and self.y == self.goal[1]) and not (match_h and self.h == self.goal[2]):
 			mov = self.lookahead_grid[self.x, self.y, self.h]
 			mov, turn = mov[0], mov[1]
 			self.move(mov, turn)
 			self.add_history()
+			self.plot_grid()
+	
+	
+	def run_23h(self):
+		self.build_state_grid()
+		self.build_policy_grid()
+		
+		self.simulate_trajectory_lookahead(0.9, 1, 4, 6, 0.0, (4,4), False)
+		self.plot_grid()
+		
