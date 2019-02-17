@@ -24,6 +24,7 @@ class DiscreteBot:
 		self.goal = (4,4)
 		
 		self.value_grid = np.ones((L, W, 12)) * (-sys.maxsize - 1)
+		self.next_value_grid = np.ones((L, W, 12)) * (-sys.maxsize - 1)
 		self.lookahead_grid = np.zeros_like(self.policy_grid)
 
 	
@@ -515,15 +516,17 @@ class DiscreteBot:
 		
 		def recursive_value(xs, ys, hs, rec_hist):
 			if xs == self.goal[0] and ys == self.goal[1]:
-				return self.reward(xs, ys)
+				return self.reward(xs, ys) # * 1/(1-discount) ? 
 			if self.value_grid[xs, ys, hs] > mmin:
 				return self.value_grid[xs, ys, hs]
 			
 			for hh in rec_hist:
 				if hh[0] == xs and hh[1] == ys and hh[2] == hs:
 					return self.reward(xs, ys)
-			
-			N = min(len(rec_hist), 10)
+			# make sure we are not going to be in an inf loop
+			N = min(len(rec_hist), 100)
+			if (N == 100):
+				print ("Cap reached! may need to increase N for optimal results")
 			rec_hist = [[xs, ys, hs]] + rec_hist[:N]
 			
 			mov = self.policy_grid[xs, ys, hs]
@@ -533,7 +536,7 @@ class DiscreteBot:
 			
 			# print(xs, ys, hs, '~~~',  xs2, ys2, hs2, '~~~', mov, turn)
 			if xs2 == xs and ys2 == ys and hs2 == hs:
-				return self.reward(xs, ys)
+				return self.reward(xs, ys)  # * 1/(1-discount) ? 
 			
 			return self.reward(xs, ys) + discount_factor * recursive_value(xs2, ys2, hs2, rec_hist)
 		
@@ -609,19 +612,23 @@ class DiscreteBot:
 		self.build_value_grid(discount_factor)
 		
 		print('Lookahead: 0')
-		prev_hash = hash(self.lookahead_grid.tobytes())
+		#prev_hash = hash(self.lookahead_grid.tobytes())
+		prev_grid = np.copy(self.lookahead_grid)
 		self.build_lookahead_grid(self.value_grid, discount_factor)
 		self.build_value_grid(discount_factor, self.lookahead_grid)
-		new_hash = hash(self.lookahead_grid.tobytes())
-
+		#new_hash = hash(self.lookahead_grid.tobytes())
+		new_grid = np.copy(self.lookahead_grid)
 		i = 0
-		while not prev_hash == new_hash:
+		#while not prev_hash == new_hash:
+		while not np.array_equal(prev_grid, new_grid):
 			i += 1
 			print('Lookahead: {}'.format(i))
-			prev_hash = new_hash
+			#prev_hash = new_hash
+			prev_grid = np.copy(new_grid)
 			self.build_lookahead_grid(self.value_grid, discount_factor)
 			self.build_value_grid(discount_factor, self.lookahead_grid)
-			new_hash = hash(self.lookahead_grid.tobytes())
+			#new_hash = hash(self.lookahead_grid.tobytes())
+			new_grid = np.copy(self.lookahead_grid)
 
 		if x0:
 			self.x = x0
@@ -648,4 +655,100 @@ class DiscreteBot:
 	def run_23h(self):
 		self.simulate_trajectory_lookahead(0.9, 1, 4, 6, 0.0, (4,4), False)
 		self.plot_grid()
+	
+	def build_value_zero(self):
+		# 2.4.a
+		self.value_grid = np.zeros((self.L, self.W, 12))
+
+	def build_next_value_grid(self,value_function, discount_factor):
+		# 2.4.a
+		# v^n(s) = max_a (sum_s' p(s,a,s')*(r(s')+discount*V^(n-1)(s')) )
+		def next_value(state):
+			# value_by_action[i][j] = value if action_ij taken
+			# i=0 -> backward=-1, i=1 -> forward=1
+			# j=0 -> left=-1, j=1 -> no turn=0, j=2-> right=1
+			value_by_action = np.zeros([2,3])
+			val_plus_reward = discount_factor * value_function 
+			for i in range(self.L):
+				for j in range(self.W):
+					for k in range(12):
+						val_plus_reward[i, j, k] += self.reward(i, j)
+			bestVal = -sys.maxsize -1
+			bestAction = [0, 0]
+			# sum_s' p(s,a,s') * val_plus_reward
+			for i in range(2):
+				for j in range(3):
+					value_by_action[i, j] = 0 
+					action_mov = 2*i-1 # i=0 -> backward=-1, i=1 -> forward=1
+					action_turn = j-1
+					# now loop over all states s'
+					for ii in range(self.L):
+						for jj in range(self.W):
+							for hh in range(12):
+								value_by_action[i,j] += self.move_probability(state[0], state[1], state[2],
+								                                              action_mov, action_turn, ii, jj, hh) \
+								                        * val_plus_reward[ii, jj, hh]
+					if (value_by_action[i, j] > bestVal):
+						bestVal = value_by_action[i, j]
+						bestAction = action_mov, action_turn
+			return bestVal
 		
+		for i in range(self.L):
+			for j in range(self.W):
+				for h in range(12):
+					c_state = [i, j, h]
+					self.next_value_grid[i, j, h] = next_value(c_state)
+	
+	def value_iteration(self, discount_factor, x0=None, y0=None, h0=None, p_error=None, goal=None, match_h=False):
+		"""
+		2.4.a
+		:return:
+		"""
+		self.build_state_grid()
+		self.build_value_zero()
+		print('V^0')
+		#prev_hash = hash(self.lookahead_grid.tobytes())
+		self.build_lookahead_grid(self.value_grid, discount_factor)
+		prev_grid = np.copy(self.lookahead_grid)
+		self.build_next_value_grid(self.value_grid, discount_factor)
+		self.build_lookahead_grid(self.next_value_grid, discount_factor)
+		new_grid = np.copy(self.lookahead_grid)
+		#new_hash = hash(self.lookahead_grid.tobytes())
+		
+		i = 0
+		#while not prev_hash == new_hash:
+		while not np.array_equal(prev_grid, new_grid):
+			i += 1
+			print('V^{}'.format(i))
+			#prev_hash = new_hash
+			prev_grid = np.copy(new_grid)
+			self.value_grid = np.copy(self.next_value_grid)
+			self.build_next_value_grid(self.value_grid, discount_factor)
+			self.build_lookahead_grid(self.next_value_grid, discount_factor)
+			#new_hash = hash(self.lookahead_grid.tobytes())
+			new_grid = np.copy(self.lookahead_grid)
+
+		if x0:
+			self.x = x0
+		if y0:
+			self.y = y0
+		if h0:
+			self.h = h0
+		if p_error:
+			self.p_error = p_error
+		if goal:
+			self.goal = goal
+		
+		self.history = []
+		self.add_history()
+		print('MOVING')
+		while not (self.x == self.goal[0] and self.y == self.goal[1]) and not (match_h and self.h == self.goal[2]):
+			mov = self.lookahead_grid[self.x, self.y, self.h]
+			mov, turn = mov[0], mov[1]
+			self.move(mov, turn)
+			self.add_history()
+			# self.plot_grid()
+
+	def run_24b(self):
+		self.value_iteration(0.9, 1, 4, 6, 0.0, (4,4), False)
+		self.plot_grid()
