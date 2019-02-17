@@ -4,7 +4,7 @@ from discrete_bot import DiscreteBot
 
 def main():
 	db = DiscreteBot(6, 6)
-	db.run_23d()
+	db.run_23e()
 	
 	
 

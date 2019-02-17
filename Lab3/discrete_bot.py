@@ -17,7 +17,7 @@ class DiscreteBot:
 		
 		# 2.1.a
 		self.S = np.zeros((L, W))   # N_s = W * L
-		self.build_grid()
+		self.build_state_grid()
 		
 		self.policy_grid = np.zeros((L, W, 12, 2))
 		self.build_policy_grid()
@@ -30,7 +30,7 @@ class DiscreteBot:
 		self.history.append([self.x, self.y, self.h])
 	
 	
-	def build_grid(self):
+	def build_state_grid(self):
 		"""
 		2.2.a: Build grid values
 		:return:
@@ -481,7 +481,7 @@ class DiscreteBot:
 		self.plot_grid()
 
 		
-	def value_function_builder(self,discount_factor, policy_matrix=None):
+	def build_value_grid(self,discount_factor, policy_matrix=None):
 		"""
 		2.3.d
 		Returns a value matrix given a policy
@@ -517,13 +517,17 @@ class DiscreteBot:
 		return self.value_grid
 			
 	
-	def run_23d(self):
+	def run_23e(self):
 		"""
-		2.3.d
+		2.3.e
 		:return:
 		"""
+		self.build_state_grid()
 		self.build_policy_grid()
-		ret = self.value_function_builder(0.9)
+		self.build_value_grid(0.9)
+		x, y, h = 1, 4, 6
+		value = self.value_grid(x, y, h)
+		print('Cost of {}, {}, {}: {}'.format(x, y, h, value))
 
 
 
