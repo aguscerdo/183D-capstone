@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 class DiscreteBot:
-	def __init__(self, W, L, x0=0, y0=0, h0=0, p_error=0.05):
+	def __init__(self, W, L, x0=0, y0=0, h0=0, p_error=0.0):
 		# Initialize states
 		self.L = L
 		self.W = W
@@ -21,6 +21,8 @@ class DiscreteBot:
 		self.policy_grid = np.zeros((L, W, 12, 2))
 		self.build_policy_grid()
 		self.goal = (4,4)
+		
+		self.value_grid = np.ones((L, W, 12)) * (np.min(self.S) - 1)
 	
 	
 	def add_history(self):
@@ -40,7 +42,7 @@ class DiscreteBot:
 			self.S[self.L-1, i] = -100
 		
 		self.S[3, 3] = self.S[3, 4] = -10
-		self.S[4, 4] = 1
+		self.S[-2, -2] = 1
 		
 	
 	# ~~~~~~ Helpers for movement and prediction ~~~~~~~~~
@@ -250,10 +252,10 @@ class DiscreteBot:
 					if di == dj == 0 or np.abs(di) + np.abs(dj) > 1:
 						continue
 					
-					prob[di+1, dj+1, dh+2] = self.move_probability(
+					prob[di+1, dj+1, dh+2] = self.move_probability(x_s, y_s, h_s,
 							movement, turning, x_s+di, y_s+dj, h_s+dh)
 					
-		next_state = np.argmax(prob)
+		next_state = np.unravel_index(np.argmax(prob, axis=None), prob.shape)
 		return x_s + next_state[0] - 1, y_s + next_state[1] - 1, h_s + next_state[2] - 2
 	
 	
@@ -363,7 +365,7 @@ class DiscreteBot:
 			ys = state[1]
 			hs = state[2]
 			#Quadrants: 0, +Y | 1, +X | 2, -Y | 3, -X
-			direction = self.heading_to_direction(hs)
+			direction, edge = self.heading_to_direction(hs)
 			# get move direction, -1 => back, 1 => fwd
 			# get turn direction, -1 => left, 1 => right, 0 => don't turn
 			moveDirection = 0
@@ -426,56 +428,59 @@ class DiscreteBot:
 			self.p_error = p_error
 		if goal:
 			self.goal = goal
-		
+			
 		self.add_history()
-		i = 0
+		
 		while not (self.x == self.goal[0] and self.y == self.goal[1]) and not (match_h and self.h == self.goal[2]):
-
 			mov = self.policy_grid[self.x, self.y, self.h]
 			mov, turn = mov[0], mov[1]
-			
-			print(i, 'X: {}, Y: {}, H: {}'.format(self.x, self.y, self.h))
 			self.move(mov, turn)
 			self.add_history()
-			i += 1
+			# self.plot_grid()
+
+		# self.add_history()
+
 		
+	def plot_grid(self):
+		"""
+		Plots movement history grid
+		:return:
+		"""
 		np_hist = np.asarray(self.history)
 		xh = np_hist[:, 0] + 0.5
 		yh = np_hist[:, 1] + 0.5
 		hh = np_hist[:, 2]
 		th = np.arange(0, np_hist.shape[0])
 		
-		for k in range(1, len(xh)):
-			xh2 = xh[:k]
-			yh2 = yh[:k]
-			th2 = th[:k]
-			
-			plt.scatter(xh2, yh2, c=th2, cmap='cool', s=200)
-			plt.plot(xh2, yh2)
-			plt.colorbar()
-			
-			plt.xlim([-1, self.L + 1])
-			plt.ylim([-1, self.W + 1])
-			
-			lx = [0, self.L, self.L, 0, 0]
-			ly = [0, 0, self.W, self.W, 0]
-			plt.plot(lx, ly, c='k')
-			
-			for ii in range(self.L):
-				for jj in range(self.W):
-					el = self.S[ii, jj]
-					s = 750
-					a = 0.25
-					if el < -10:
-						plt.scatter(ii+0.5, jj+0.5, alpha=a, c='r', s=s)
-					elif el < 0:
-						plt.scatter(ii+0.5, jj+0.5, alpha=a, c='y', s=s)
-					elif el > 0:
-						plt.scatter(ii+0.5, jj+0.5, alpha=a, c='g', s=s)
-	
-			
-			plt.grid(True, 'both', 'both')
-			plt.show()
+		plt.scatter(xh, yh, c=th, cmap='cool', s=200)
+		plt.plot(xh, yh)
+		plt.colorbar()
+		
+		plt.xlim([-1, self.L + 1])
+		plt.ylim([-1, self.W + 1])
+		
+		lx = [0, self.L, self.L, 0, 0]
+		ly = [0, 0, self.W, self.W, 0]
+		plt.plot(lx, ly, c='k')
+		
+		s = 750 * 6 / self.L
+		a = 0.25
+		plt.scatter(self.goal[0]+0.5, self.goal[1]+0.5, alpha=a, s=s, c='g')
+
+		for ii in range(self.L):
+			for jj in range(self.W):
+				el = self.S[ii, jj]
+
+				if el < -10:
+					plt.scatter(ii + 0.5, jj + 0.5, alpha=a, c='r', s=s)
+				elif el < 0:
+					plt.scatter(ii + 0.5, jj + 0.5, alpha=a, c='y', s=s)
+				elif el > 0:
+					plt.scatter(ii + 0.5, jj + 0.5, alpha=a, c='g', s=s)
+		
+		plt.grid(True, 'both', 'both')
+		plt.title('Movement: {}'.format(th[-1]))
+		plt.show()
 	
 	
 	def run_23c(self):
@@ -483,6 +488,51 @@ class DiscreteBot:
 		2.3.c run the given simulation
 		:return:
 		"""
-		self.simulate_trajectory(x0=1, y0=4, h0=6, goal=(4, 4), p_error=0)
+		self.build_policy_grid()
+		self.simulate_trajectory(x0=1, y0=4, h0=6, p_error=0, goal=(4, 4))
+		self.plot_grid()
+
+		
+	def value_function_builder(self,discount_factor, policy_matrix=None):
+		"""
+		2.3.d
+		Returns a value matrix given a policy
+		:param discount_factor:
+		:param policy_matrix:
+		:return:
+		"""
+		if policy_matrix is not None:
+			self.policy_grid = policy_matrix
+			
+		mmin = np.min(self.value_grid)
+		def recursive_value(xs, ys, hs):
+
+			if xs == self.goal[0] and ys == self.goal[1]:
+				return self.reward(xs, ys)
+			if self.value_grid[xs, ys, hs] > mmin:
+				return self.value_grid[xs, ys, hs]
+			
+			mov, turn = self.policy_grid[xs, ys, hs, :]
+			xs2, ys2, hs2 = self.next_state(xs, ys, hs, mov, turn)
+			print(xs, ys, hs, '~', xs2, ys2, hs2)
+
+			return self.reward(xs, ys) + discount_factor * recursive_value(xs2, ys2, hs2)
+		
+		for x in range(self.L):
+			for y in range(self.W):
+				for h in range(12):
+					print(x, y, h)
+					self.value_grid[x, y, h] = recursive_value(x, y, h)
+
+		return self.value_grid
+			
+	
+	def run_23d(self):
+		self.build_policy_grid()
+		ret = self.value_function_builder(0.9)
+		for i in ret:
+			print(i)
 		
 		
+		
+	
