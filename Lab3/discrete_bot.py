@@ -19,7 +19,7 @@ class DiscreteBot:
 		self.S = np.zeros((L, W))   # N_s = W * L
 		self.build_grid()
 		
-		self.policy_grid = np.zeros((L, W, 12))
+		self.policy_grid = np.zeros((L, W, 12, 2))
 		self.build_policy_grid()
 	
 	
@@ -400,6 +400,7 @@ class DiscreteBot:
 					action = greedy_policy(state)
 					self.policy_grid[i, j, h, :] = action
 	
+		print(self.policy_grid)
 	
 	
 	def simulate_trajectory(self, x0=None, y0=None, h0=None, p_error=None, goal=None, match_h=False):
