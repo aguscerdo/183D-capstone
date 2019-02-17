@@ -445,30 +445,37 @@ class DiscreteBot:
 		hh = np_hist[:, 2]
 		th = np.arange(0, np_hist.shape[0])
 		
-		plt.scatter(xh, yh, c=th, cmap='RdBu')
-		plt.xlim([-1, self.L + 1])
-		plt.ylim([-1, self.W + 1])
-		
-		lx = [0, self.L, self.L, 0, 0]
-		ly = [0, 0, self.W, self.W, 0]
-		plt.plot(lx, ly, c='k')
-		
-		for ii in range(self.L):
-			for jj in range(self.W):
-				print(ii, jj)
-				el = self.S[ii, jj]
-				s = 750
-				a = 0.25
-				if el < -10:
-					plt.scatter(ii+0.5, jj+0.5, alpha=a, c='r', s=s)
-				elif el < 0:
-					plt.scatter(ii+0.5, jj+0.5, alpha=a, c='y', s=s)
-				elif el > 0:
-					plt.scatter(ii+0.5, jj+0.5, alpha=a, c='g', s=s)
-
-		
-		plt.grid(True, 'both', 'both')
-		plt.show()
+		for k in range(1, len(xh)):
+			xh2 = xh[:k]
+			yh2 = yh[:k]
+			th2 = th[:k]
+			
+			plt.scatter(xh2, yh2, c=th2, cmap='cool', s=200)
+			plt.plot(xh2, yh2)
+			plt.colorbar()
+			
+			plt.xlim([-1, self.L + 1])
+			plt.ylim([-1, self.W + 1])
+			
+			lx = [0, self.L, self.L, 0, 0]
+			ly = [0, 0, self.W, self.W, 0]
+			plt.plot(lx, ly, c='k')
+			
+			for ii in range(self.L):
+				for jj in range(self.W):
+					el = self.S[ii, jj]
+					s = 750
+					a = 0.25
+					if el < -10:
+						plt.scatter(ii+0.5, jj+0.5, alpha=a, c='r', s=s)
+					elif el < 0:
+						plt.scatter(ii+0.5, jj+0.5, alpha=a, c='y', s=s)
+					elif el > 0:
+						plt.scatter(ii+0.5, jj+0.5, alpha=a, c='g', s=s)
+	
+			
+			plt.grid(True, 'both', 'both')
+			plt.show()
 	
 	
 	def run_23c(self):
