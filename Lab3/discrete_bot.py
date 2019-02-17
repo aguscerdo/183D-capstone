@@ -1,9 +1,8 @@
-import numpy as np
 import matplotlib.pyplot as plt
-from numpy import np
+import numpy as np
 
 class DiscreteBot:
-	def __init__(self, W, L, x0, y0, h0, p_error=0.05):
+	def __init__(self, W, L, x0=0, y0=0, h0=0, p_error=0.05):
 		# Initialize states
 		self.L = L
 		self.W = W
@@ -11,7 +10,7 @@ class DiscreteBot:
 		self.x = x0
 		self.y = y0
 		self.h = h0
-		self.history = [[x0, y0, h0]]
+		self.history = []
 		
 		self.p_error=p_error
 		
@@ -21,15 +20,11 @@ class DiscreteBot:
 		
 		self.policy_grid = np.zeros((L, W, 12, 2))
 		self.build_policy_grid()
+		self.goal = (4,4)
 	
 	
 	def add_history(self):
 		self.history.append([self.x, self.y, self.h])
-	
-	def update_h(self, h):
-		if h < 0:
-			h += 12
-		self.h = h % 12
 	
 	
 	def build_grid(self):
@@ -41,8 +36,8 @@ class DiscreteBot:
 			self.S[i, 0] = -100
 			self.S[i, self.W-1] = -100
 		for i in range(self.W):
-			self.S[0, 1] = -100
-			self.S[self.L-1, 0] = -100
+			self.S[0, i] = -100
+			self.S[self.L-1, i] = -100
 		
 		self.S[3, 3] = self.S[3, 4] = -10
 		self.S[4, 4] = 1
@@ -81,7 +76,7 @@ class DiscreteBot:
 	
 	def update_x(self, diff):
 		if 0 <= self.x + diff < self.L:
-			self.x += diff
+			self.x = int(self.x+diff)
 			return True
 		else:
 			return False
@@ -89,10 +84,16 @@ class DiscreteBot:
 	
 	def update_y(self, diff):
 		if 0 <= self.y + diff < self.W:
-			self.y += diff
+			self.y = int(self.y+diff)
 			return True
 		else:
 			return False
+	
+	
+	def update_h(self, h):
+		if h < 0:
+			h += 12
+		self.h = int(h % 12)
 	
 	
 	def move(self, movement, turning):
@@ -400,8 +401,6 @@ class DiscreteBot:
 					action = greedy_policy(state)
 					self.policy_grid[i, j, h, :] = action
 	
-		print(self.policy_grid)
-	
 	
 	def simulate_trajectory(self, x0=None, y0=None, h0=None, p_error=None, goal=None, match_h=False):
 		"""
@@ -417,26 +416,36 @@ class DiscreteBot:
 		:param match_h: match the heading as goal
 		:return:
 		"""
-		if x0: self.x = x0
-		if y0: self.y = x0
-		if h0: self.h = x0
-		if p_error: self.p_error = x0
-		if goal: self.goal = goal
+		if x0:
+			self.x = x0
+		if y0:
+			self.y = y0
+		if h0:
+			self.h = h0
+		if p_error:
+			self.p_error = p_error
+		if goal:
+			self.goal = goal
 		
 		self.add_history()
-		
-		while not (self.x == self.goal[0] and self.y == self.goal[1] and (not match_h and self.h == self.goal[2])):
-			mov, turn = self.policy_grid[self.x, self.y, self.h]
+		i = 0
+		while not (self.x == self.goal[0] and self.y == self.goal[1]) and not (match_h and self.h == self.goal[2]):
+
+			mov = self.policy_grid[self.x, self.y, self.h]
+			mov, turn = mov[0], mov[1]
+			
+			print(i, 'X: {}, Y: {}, H: {}'.format(self.x, self.y, self.h))
 			self.move(mov, turn)
 			self.add_history()
+			i += 1
 		
 		np_hist = np.asarray(self.history)
-		xh = np_hist[:, 0]
-		yh = np_hist[:, 1]
+		xh = np_hist[:, 0] + 0.5
+		yh = np_hist[:, 1] + 0.5
 		hh = np_hist[:, 2]
 		th = np.arange(0, np_hist.shape[0])
 		
-		plt.scatter(xh, yh, c=th, cmap='RdBl')
+		plt.scatter(xh, yh, c=th, cmap='RdBu')
 		plt.xlim([-1, self.L + 1])
 		plt.ylim([-1, self.W + 1])
 		
@@ -444,14 +453,29 @@ class DiscreteBot:
 		ly = [0, 0, self.W, self.W, 0]
 		plt.plot(lx, ly, c='k')
 		
+		for ii in range(self.L):
+			for jj in range(self.W):
+				print(ii, jj)
+				el = self.S[ii, jj]
+				s = 750
+				a = 0.25
+				if el < -10:
+					plt.scatter(ii+0.5, jj+0.5, alpha=a, c='r', s=s)
+				elif el < 0:
+					plt.scatter(ii+0.5, jj+0.5, alpha=a, c='y', s=s)
+				elif el > 0:
+					plt.scatter(ii+0.5, jj+0.5, alpha=a, c='g', s=s)
+
+		
 		plt.grid(True, 'both', 'both')
 		plt.show()
+	
 	
 	def run_23c(self):
 		"""
 		2.3.c run the given simulation
 		:return:
 		"""
-		self.simulate_trajectory(1, 4, 6, 0, (4, 4))
+		self.simulate_trajectory(x0=1, y0=4, h0=6, goal=(4, 4), p_error=0)
 		
 		
