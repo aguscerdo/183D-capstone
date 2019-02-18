@@ -348,13 +348,22 @@ class DiscreteBot:
 	
 		
 	
-	def reward(self, x_s, y_s):
+	def reward(self, x_s, y_s, h_s=-1):
 		"""
 		2.2.a
 		:param x_s: state x position
 		:param y_s: state y position
 		:return:
 		"""
+		if (h_s == -1):
+			# don't care about h, reward is same
+			return self.S[x_s, y_s]
+		else:
+			# 2.5, care about h 
+			# if state is goal state, then reward if h == 6
+			if x_s == self.goal[0] and y_s == self.goal[1]:
+				return (h_s == 6) * self.S[x_s, y_s]
+		# if state not goal state, reward is the same
 		return self.S[x_s, y_s]
 	
 
@@ -574,7 +583,7 @@ class DiscreteBot:
 			for i in range(self.L):
 				for j in range(self.W):
 					for k in range(12):
-						val_plus_reward[i, j, k] += self.reward(i, j)
+						val_plus_reward[i, j, k] += self.reward(i, j, k)
 			# TODO change this later, initialise to neg inf or something
 			bestVal = -sys.maxsize -1
 			bestAction = [0, 0]
@@ -673,7 +682,7 @@ class DiscreteBot:
 			for i in range(self.L):
 				for j in range(self.W):
 					for k in range(12):
-						val_plus_reward[i, j, k] += self.reward(i, j)
+						val_plus_reward[i, j, k] += self.reward(i, j, k)
 			bestVal = -sys.maxsize -1
 			bestAction = [0, 0]
 			# sum_s' p(s,a,s') * val_plus_reward
