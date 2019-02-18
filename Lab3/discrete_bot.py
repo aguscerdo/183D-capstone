@@ -786,3 +786,38 @@ class DiscreteBot:
 			mask = np.not_equal(valueiter_policy, policyiter_policy)
 			count_diff = np.sum(mask)
 			print ("They differ by " + str(count_diff) + " elements")
+			
+			
+			
+	def run_25a(self):
+		"""
+		2.5.a
+		:return:
+		"""
+		self.value_iteration(0.9, 1, 4, 6, 0.1, (4,4), False)
+		self.plot_grid()
+		
+		
+	def run_25b(self):
+		"""
+		2.5.b
+		:return:
+		"""
+		self.value_iteration(0.9, 1, 4, 6, 0.0, (4,4), 6)
+		self.plot_grid()
+		
+		self.value_iteration(0.9, 1, 4, 6, 0.05, (4,4), 6)
+		self.plot_grid()
+		
+		self.value_iteration(0.9, 1, 4, 6, 0.1, (4,4), 6)
+		self.plot_grid()
+		
+		self.value_iteration(0.9, 1, 4, 6, 0.15, (4,4), 6)
+		self.plot_grid()
+		
+		self.value_iteration(0.9, 1, 4, 6, 0.2, (4,4), 6)
+		self.plot_grid()
+		
+		self.value_iteration(0.9, 1, 4, 6, 0.25, (4,4), 6)
+		self.plot_grid()
+		
