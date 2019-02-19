@@ -305,10 +305,14 @@ class DiscreteBot:
 		:param turning: turning direction (-1, 0, +1)
 		:return: (x, y, h) next most probable state
 		"""
+		# if at edge or move = 0, no error
 		if movement == 0:
-			return None
+			return [x_s, y_s, h_s]
 		elif not (0<= x_s < self.L and 0<= y_s < self.W):
-			return None
+			nh = h_s + next_state[2] - 2
+			if nh < 0: nh += 12
+			nh = nh % 12
+			return [x_s, y_s, nh]
 		
 		if h_s > 12:
 			h_s = h_s % 12
@@ -527,8 +531,8 @@ class DiscreteBot:
 		def recursive_value(xs, ys, hs, rec_hist):
 			if xs == self.goal[0] and ys == self.goal[1]:
 				if (self.goal[2] > -1):
-					return self.reward(xs, ys, hs) # * 1/(1-discount) ? 
-				return self.reward(xs, ys) # * 1/(1-discount) ? 
+					return self.reward(xs, ys, hs) * 1.0/(1-discount_factor)
+				return self.reward(xs, ys) * 1.0/(1-discount_factor) 
 			if self.value_grid[xs, ys, hs] > mmin:
 				return self.value_grid[xs, ys, hs]
 			
@@ -548,7 +552,7 @@ class DiscreteBot:
 			
 			# print(xs, ys, hs, '~~~',  xs2, ys2, hs2, '~~~', mov, turn)
 			if xs2 == xs and ys2 == ys and hs2 == hs:
-				return self.reward(xs, ys)  # * 1/(1-discount) ? 
+				return self.reward(xs, ys)  * 1.0/(1-discount_factor)
 			
 			return self.reward(xs, ys) + discount_factor * recursive_value(xs2, ys2, hs2, rec_hist)
 		
