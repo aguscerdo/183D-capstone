@@ -679,7 +679,7 @@ class DiscreteBot:
 			mov, turn = mov[0], mov[1]
 			self.move(mov, turn)
 			self.add_history()
-			stopCondition = (self.x == self.goal[0]) and (self.y == self.goal[1]) and (self.h == self.goal[2] and match_h) or (mov = 0)
+			stopCondition = (self.x == self.goal[0]) and (self.y == self.goal[1]) and (self.h == self.goal[2] and match_h) or (mov == 0)
 			# self.plot_grid()
 
 	
@@ -793,7 +793,7 @@ class DiscreteBot:
 			mov, turn = mov[0], mov[1]
 			self.move(mov, turn)
 			self.add_history()
-			stopCondition = (self.x == self.goal[0]) and (self.y == self.goal[1]) and (self.h == self.goal[2] and match_h) or mov = 0
+			stopCondition = (self.x == self.goal[0]) and (self.y == self.goal[1]) and (self.h == self.goal[2] and match_h) or (mov == 0)
 			# self.plot_grid()
 
 	def run_24b(self):
