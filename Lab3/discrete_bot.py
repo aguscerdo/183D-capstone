@@ -586,9 +586,16 @@ class DiscreteBot:
 				for j in range(self.W):
 					for k in range(12):
 						val_plus_reward[i, j, k] += self.reward(i, j, k)
-			# TODO change this later, initialise to neg inf or something
-			bestVal = -sys.maxsize -1
 			bestAction = [0, 0]
+			# if dont move, reward is 
+			action_mov = 0
+			action_turn = 0
+			bestVal = 0
+			for ii in range(self.L):
+						for jj in range(self.W):
+							for hh in range(12):
+								bestVal += self.move_probability(state[0], state[1], state[2], action_mov, action_turn, ii, jj, hh) \
+								                        * val_plus_reward[ii, jj, hh]
 			# sum_s' p(s,a,s') * val_plus_reward
 			for i in range(2):
 				for j in range(3):
@@ -690,8 +697,16 @@ class DiscreteBot:
 				for j in range(self.W):
 					for k in range(12):
 						val_plus_reward[i, j, k] += self.reward(i, j, k)
-			bestVal = -sys.maxsize -1
 			bestAction = [0, 0]
+			action_mov = 0
+			action_turn = 0
+			bestVal = 0
+			# if dont move, reward is: 
+			for ii in range(self.L):
+						for jj in range(self.W):
+							for hh in range(12):
+								bestVal += self.move_probability(state[0], state[1], state[2], action_mov, action_turn, ii, jj, hh) \
+								                        * val_plus_reward[ii, jj, hh]
 			# sum_s' p(s,a,s') * val_plus_reward
 			for i in range(2):
 				for j in range(3):
