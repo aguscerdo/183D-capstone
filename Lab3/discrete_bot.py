@@ -643,7 +643,8 @@ class DiscreteBot:
 		new_grid = np.copy(self.lookahead_grid)
 		i = 0
 		#while not prev_hash == new_hash:
-		while not np.array_equal(prev_grid, new_grid):
+		stopCondition = (np.sum(np.not_equal(prev_grid, new_grid)) < 1)
+		while not stopCondition:
 			i += 1
 			print('Lookahead: {}'.format(i))
 			#prev_hash = new_hash
@@ -652,6 +653,9 @@ class DiscreteBot:
 			self.build_value_grid(discount_factor, self.lookahead_grid)
 			#new_hash = hash(self.lookahead_grid.tobytes())
 			new_grid = np.copy(self.lookahead_grid)
+			differBy = np.sum(np.not_equal(prev_grid, new_grid))
+			print("Differ by: " + str(differBy))
+			stopCondition = (differBy < 1) or (i > 10 and differBy < 20) or (i > 25 and differBy < 50)
 
 		if x0:
 			self.x = x0
@@ -675,7 +679,7 @@ class DiscreteBot:
 			mov, turn = mov[0], mov[1]
 			self.move(mov, turn)
 			self.add_history()
-			stopCondition = (self.x == self.goal[0]) and (self.y == self.goal[1]) and (self.h == self.goal[2] and match_h)
+			stopCondition = (self.x == self.goal[0]) and (self.y == self.goal[1]) and (self.h == self.goal[2] and match_h) or (mov = 0)
 			# self.plot_grid()
 
 	
@@ -789,7 +793,7 @@ class DiscreteBot:
 			mov, turn = mov[0], mov[1]
 			self.move(mov, turn)
 			self.add_history()
-			stopCondition = (self.x == self.goal[0]) and (self.y == self.goal[1]) and (self.h == self.goal[2] and match_h)
+			stopCondition = (self.x == self.goal[0]) and (self.y == self.goal[1]) and (self.h == self.goal[2] and match_h) or mov = 0
 			# self.plot_grid()
 
 	def run_24b(self):
@@ -832,7 +836,8 @@ class DiscreteBot:
 		self.plot_grid()
 	
 	def run_25b(self):
-		errs = [0, 0.05,0.1,0.15,0.2, 0.25]
+		#errs = [0, 0.05,0.1,0.15,0.2, 0.25]
+		errs = [0.15,0.2, 0.25]
 		for err in errs:
 			self.policy_iteration(0.9, 1, 4, 6, err, (4,4,6), True)
 			print("Now at err = " + str(err))
