@@ -617,10 +617,10 @@ class DiscreteBot:
 		2.3.g
 		:return:
 		"""
+		self.goal = goal # justin case
 		self.build_state_grid()
 		self.build_policy_grid()
 		self.build_value_grid(discount_factor)
-		
 		print('Lookahead: 0')
 		#prev_hash = hash(self.lookahead_grid.tobytes())
 		prev_grid = np.copy(self.lookahead_grid)
@@ -714,6 +714,7 @@ class DiscreteBot:
 		2.4.a
 		:return:
 		"""
+		self.goal = goal # justin case
 		self.build_state_grid()
 		self.build_value_zero()
 		print('V^0')
