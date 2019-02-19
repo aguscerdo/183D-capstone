@@ -567,7 +567,7 @@ class DiscreteBot:
 		self.build_policy_grid()
 		self.build_value_grid(0.9)
 		x, y, h = 1, 4, 6
-		value = self.value_grid(x, y, h)
+		value = self.value_grid[x, y, h]
 		print('Cost of {}, {}, {}: {}'.format(x, y, h, value))
 
 
@@ -795,3 +795,10 @@ class DiscreteBot:
 			mask = np.not_equal(valueiter_policy, policyiter_policy)
 			count_diff = np.sum(mask)
 			print ("They differ by " + str(count_diff) + " elements")
+	
+	def run_25a(self):
+		self.policy_iteration(0.9, 1, 4, 6, 0.1, (4,4), False)
+	
+	def run_25b(self):
+		self.policy_iteration(0.9, 1, 4, 6, 0.1, (4,4,6), True)
+
