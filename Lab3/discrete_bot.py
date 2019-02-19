@@ -799,7 +799,12 @@ class DiscreteBot:
 	
 	def run_25a(self):
 		self.policy_iteration(0.9, 1, 4, 6, 0.1, (4,4), False)
+		self.plot_grid()
 	
 	def run_25b(self):
-		self.policy_iteration(0.9, 1, 4, 6, 0.1, (4,4,6), True)
+		for err in [0, 0.05,0.1,0.2, 0.25]:
+			self.policy_iteration(0.9, 1, 4, 6, err, (4,4,6), True)
+			self.plot_grid()
+
+
 
