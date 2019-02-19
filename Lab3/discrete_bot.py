@@ -656,14 +656,17 @@ class DiscreteBot:
 		self.history = []
 		self.add_history()
 		print('MOVING')
-		while not (self.x == self.goal[0] and self.y == self.goal[1]) and not (match_h and self.h == self.goal[2]):
+		stopCondition = (self.x == self.goal[0]) and (self.y == self.goal[1]) and (self.h == self.goal[2] and match_h)
+		while not stopCondition:
 			mov = self.lookahead_grid[self.x, self.y, self.h]
 			print('stepping')
 			print (mov)
 			mov, turn = mov[0], mov[1]
 			self.move(mov, turn)
 			self.add_history()
+			stopCondition = (self.x == self.goal[0]) and (self.y == self.goal[1]) and (self.h == self.goal[2] and match_h)
 			# self.plot_grid()
+
 	
 	
 	def run_23h(self):
@@ -759,13 +762,15 @@ class DiscreteBot:
 		self.history = []
 		self.add_history()
 		print('MOVING')
-		while not (self.x == self.goal[0] and self.y == self.goal[1]) and not (match_h and self.h == self.goal[2]):
+		stopCondition = (self.x == self.goal[0]) and (self.y == self.goal[1]) and (self.h == self.goal[2] and match_h)
+		while not stopCondition:
 			mov = self.lookahead_grid[self.x, self.y, self.h]
 			print('stepping')
 			print (mov)
 			mov, turn = mov[0], mov[1]
 			self.move(mov, turn)
 			self.add_history()
+			stopCondition = (self.x == self.goal[0]) and (self.y == self.goal[1]) and (self.h == self.goal[2] and match_h)
 			# self.plot_grid()
 
 	def run_24b(self):
@@ -808,12 +813,10 @@ class DiscreteBot:
 		self.plot_grid()
 	
 	def run_25b(self):
-		#errs = [0, 0.05,0.1,0.2, 0.25]
-		errs = [0]
+		errs = [0, 0.05,0.1,0.15,0.2, 0.25]
 		for err in errs:
-			print(err)
 			self.policy_iteration(0.9, 1, 4, 6, err, (4,4,6), True)
-			print( self.lookahead_grid[1, 4])
+			print("Now at err = " + str(err))
 			self.plot_grid()
 
 
