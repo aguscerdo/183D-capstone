@@ -771,7 +771,7 @@ class DiscreteBot:
 		start = [time.time(), time.clock()]
 		self.policy_iteration(0.9, 1, 4, 6, 0.0, (4,4), False)
 		end = [time.time(), time.clock()]
-		print("value iteration time, .clock, .time: ")
+		print("policy iteration time, .clock, .time: ")
 		print (str(end[1] - start[1]) )
 		print (str(end[0] - start[0]) )
 		# save policy/value
