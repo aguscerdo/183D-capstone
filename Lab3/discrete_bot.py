@@ -22,7 +22,7 @@ class DiscreteBot:
 		
 		self.policy_grid = np.zeros((L, W, 12, 2))
 		self.build_policy_grid()
-		self.goal = (4,4)
+		self.goal = (4,4,-1)
 		
 		self.value_grid = np.ones((L, W, 12)) * (-sys.maxsize - 1)
 		self.next_value_grid = np.ones((L, W, 12)) * (-sys.maxsize - 1)
@@ -355,13 +355,13 @@ class DiscreteBot:
 		:param y_s: state y position
 		:return:
 		"""
-		if (h_s == -1):
+		if (h_s == -1 or self.goal[2] == -1):
 			# don't care about h, reward is same
 			return self.S[x_s, y_s]
 		else:
 			# 2.5, care about h 
 			# if state is goal state, then reward if h == 6
-			if x_s == self.goal[0] and y_s == self.goal[1]:
+			if x_s == self.goal[0] and y_s == self.goal[1] and self.goal[2] >= 0:
 				return (h_s == 6) * self.S[x_s, y_s]
 		# if state not goal state, reward is the same
 		return self.S[x_s, y_s]
@@ -526,6 +526,8 @@ class DiscreteBot:
 		
 		def recursive_value(xs, ys, hs, rec_hist):
 			if xs == self.goal[0] and ys == self.goal[1]:
+				if (self.goal[2] > -1):
+					return self.reward(xs, ys, hs) # * 1/(1-discount) ? 
 				return self.reward(xs, ys) # * 1/(1-discount) ? 
 			if self.value_grid[xs, ys, hs] > mmin:
 				return self.value_grid[xs, ys, hs]
@@ -656,6 +658,8 @@ class DiscreteBot:
 		print('MOVING')
 		while not (self.x == self.goal[0] and self.y == self.goal[1]) and not (match_h and self.h == self.goal[2]):
 			mov = self.lookahead_grid[self.x, self.y, self.h]
+			print('stepping')
+			print (mov)
 			mov, turn = mov[0], mov[1]
 			self.move(mov, turn)
 			self.add_history()
@@ -757,6 +761,8 @@ class DiscreteBot:
 		print('MOVING')
 		while not (self.x == self.goal[0] and self.y == self.goal[1]) and not (match_h and self.h == self.goal[2]):
 			mov = self.lookahead_grid[self.x, self.y, self.h]
+			print('stepping')
+			print (mov)
 			mov, turn = mov[0], mov[1]
 			self.move(mov, turn)
 			self.add_history()
@@ -802,8 +808,12 @@ class DiscreteBot:
 		self.plot_grid()
 	
 	def run_25b(self):
-		for err in [0, 0.05,0.1,0.2, 0.25]:
+		#errs = [0, 0.05,0.1,0.2, 0.25]
+		errs = [0]
+		for err in errs:
+			print(err)
 			self.policy_iteration(0.9, 1, 4, 6, err, (4,4,6), True)
+			print( self.lookahead_grid[1, 4])
 			self.plot_grid()
 
 
