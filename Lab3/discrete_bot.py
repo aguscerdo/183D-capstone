@@ -22,7 +22,7 @@ class DiscreteBot:
 		
 		self.policy_grid = np.zeros((L, W, 12, 2))
 		self.build_policy_grid()
-		self.goal = (4,4)
+		self.goal = (4,4,-1)
 		
 		self.value_grid = np.ones((L, W, 12)) * (-sys.maxsize - 1)
 		self.next_value_grid = np.ones((L, W, 12)) * (-sys.maxsize - 1)
@@ -305,10 +305,14 @@ class DiscreteBot:
 		:param turning: turning direction (-1, 0, +1)
 		:return: (x, y, h) next most probable state
 		"""
+		# if at edge or move = 0, no error
 		if movement == 0:
-			return None
+			return [x_s, y_s, h_s]
 		elif not (0<= x_s < self.L and 0<= y_s < self.W):
-			return None
+			nh = h_s + next_state[2] - 2
+			if nh < 0: nh += 12
+			nh = nh % 12
+			return [x_s, y_s, nh]
 		
 		if h_s > 12:
 			h_s = h_s % 12
@@ -348,13 +352,22 @@ class DiscreteBot:
 	
 		
 	
-	def reward(self, x_s, y_s):
+	def reward(self, x_s, y_s, h_s=-1):
 		"""
 		2.2.a
 		:param x_s: state x position
 		:param y_s: state y position
 		:return:
 		"""
+		if (h_s == -1 or self.goal[2] == -1):
+			# don't care about h, reward is same
+			return self.S[x_s, y_s]
+		else:
+			# 2.5, care about h 
+			# if state is goal state, then reward if h == 6
+			if x_s == self.goal[0] and y_s == self.goal[1] and self.goal[2] >= 0:
+				return (h_s == 6) * self.S[x_s, y_s]
+		# if state not goal state, reward is the same
 		return self.S[x_s, y_s]
 	
 
@@ -517,7 +530,9 @@ class DiscreteBot:
 		
 		def recursive_value(xs, ys, hs, rec_hist):
 			if xs == self.goal[0] and ys == self.goal[1]:
-				return self.reward(xs, ys) # * 1/(1-discount) ? 
+				if (self.goal[2] > -1):
+					return self.reward(xs, ys, hs) * 1.0/(1-discount_factor)
+				return self.reward(xs, ys) * 1.0/(1-discount_factor) 
 			if self.value_grid[xs, ys, hs] > mmin:
 				return self.value_grid[xs, ys, hs]
 			
@@ -537,7 +552,7 @@ class DiscreteBot:
 			
 			# print(xs, ys, hs, '~~~',  xs2, ys2, hs2, '~~~', mov, turn)
 			if xs2 == xs and ys2 == ys and hs2 == hs:
-				return self.reward(xs, ys)  # * 1/(1-discount) ? 
+				return self.reward(xs, ys)  * 1.0/(1-discount_factor)
 			
 			return self.reward(xs, ys) + discount_factor * recursive_value(xs2, ys2, hs2, rec_hist)
 		
@@ -558,7 +573,7 @@ class DiscreteBot:
 		self.build_policy_grid()
 		self.build_value_grid(0.9)
 		x, y, h = 1, 4, 6
-		value = self.value_grid(x, y, h)
+		value = self.value_grid[x, y, h]
 		print('Cost of {}, {}, {}: {}'.format(x, y, h, value))
 
 
@@ -574,10 +589,17 @@ class DiscreteBot:
 			for i in range(self.L):
 				for j in range(self.W):
 					for k in range(12):
-						val_plus_reward[i, j, k] += self.reward(i, j)
-			# TODO change this later, initialise to neg inf or something
-			bestVal = -sys.maxsize -1
+						val_plus_reward[i, j, k] += self.reward(i, j, k)
 			bestAction = [0, 0]
+			# if dont move, reward is 
+			action_mov = 0
+			action_turn = 0
+			bestVal = 0
+			for ii in range(self.L):
+						for jj in range(self.W):
+							for hh in range(12):
+								bestVal += self.move_probability(state[0], state[1], state[2], action_mov, action_turn, ii, jj, hh) \
+								                        * val_plus_reward[ii, jj, hh]
 			# sum_s' p(s,a,s') * val_plus_reward
 			for i in range(2):
 				for j in range(3):
@@ -608,10 +630,10 @@ class DiscreteBot:
 		2.3.g
 		:return:
 		"""
+		self.goal = goal # justin case
 		self.build_state_grid()
 		self.build_policy_grid()
 		self.build_value_grid(discount_factor)
-		
 		print('Lookahead: 0')
 		#prev_hash = hash(self.lookahead_grid.tobytes())
 		prev_grid = np.copy(self.lookahead_grid)
@@ -621,7 +643,8 @@ class DiscreteBot:
 		new_grid = np.copy(self.lookahead_grid)
 		i = 0
 		#while not prev_hash == new_hash:
-		while not np.array_equal(prev_grid, new_grid):
+		stopCondition = (np.sum(np.not_equal(prev_grid, new_grid)) < 1)
+		while not stopCondition:
 			i += 1
 			print('Lookahead: {}'.format(i))
 			#prev_hash = new_hash
@@ -630,6 +653,9 @@ class DiscreteBot:
 			self.build_value_grid(discount_factor, self.lookahead_grid)
 			#new_hash = hash(self.lookahead_grid.tobytes())
 			new_grid = np.copy(self.lookahead_grid)
+			differBy = np.sum(np.not_equal(prev_grid, new_grid))
+			print("Differ by: " + str(differBy))
+			stopCondition = (differBy < 1) or (i > 10 and differBy < 20) or (i > 25 and differBy < 50)
 
 		if x0:
 			self.x = x0
@@ -645,12 +671,17 @@ class DiscreteBot:
 		self.history = []
 		self.add_history()
 		print('MOVING')
-		while not (self.x == self.goal[0] and self.y == self.goal[1]) and not (match_h and self.h == self.goal[2]):
+		stopCondition = (self.x == self.goal[0]) and (self.y == self.goal[1]) and (self.h == self.goal[2] and match_h)
+		while not stopCondition:
 			mov = self.lookahead_grid[self.x, self.y, self.h]
+			print('stepping')
+			print (mov)
 			mov, turn = mov[0], mov[1]
 			self.move(mov, turn)
 			self.add_history()
+			stopCondition = (self.x == self.goal[0]) and (self.y == self.goal[1]) and (self.h == self.goal[2] and match_h) or (mov == 0)
 			# self.plot_grid()
+
 	
 	
 	def run_23h(self):
@@ -673,9 +704,17 @@ class DiscreteBot:
 			for i in range(self.L):
 				for j in range(self.W):
 					for k in range(12):
-						val_plus_reward[i, j, k] += self.reward(i, j)
-			bestVal = -sys.maxsize -1
+						val_plus_reward[i, j, k] += self.reward(i, j, k)
 			bestAction = [0, 0]
+			action_mov = 0
+			action_turn = 0
+			bestVal = 0
+			# if dont move, reward is: 
+			for ii in range(self.L):
+						for jj in range(self.W):
+							for hh in range(12):
+								bestVal += self.move_probability(state[0], state[1], state[2], action_mov, action_turn, ii, jj, hh) \
+								                        * val_plus_reward[ii, jj, hh]
 			# sum_s' p(s,a,s') * val_plus_reward
 			for i in range(2):
 				for j in range(3):
@@ -705,6 +744,7 @@ class DiscreteBot:
 		2.4.a
 		:return:
 		"""
+		self.goal = goal # justin case
 		self.build_state_grid()
 		self.build_value_zero()
 		print('V^0')
@@ -745,11 +785,15 @@ class DiscreteBot:
 		self.history = []
 		self.add_history()
 		print('MOVING')
-		while not (self.x == self.goal[0] and self.y == self.goal[1]) and not (match_h and self.h == self.goal[2]):
+		stopCondition = (self.x == self.goal[0]) and (self.y == self.goal[1]) and (self.h == self.goal[2] and match_h)
+		while not stopCondition:
 			mov = self.lookahead_grid[self.x, self.y, self.h]
+			print('stepping')
+			print (mov)
 			mov, turn = mov[0], mov[1]
 			self.move(mov, turn)
 			self.add_history()
+			stopCondition = (self.x == self.goal[0]) and (self.y == self.goal[1]) and (self.h == self.goal[2] and match_h) or (mov == 0)
 			# self.plot_grid()
 
 	def run_24b(self):
@@ -761,7 +805,7 @@ class DiscreteBot:
 		start = [time.time(), time.clock()]
 		self.policy_iteration(0.9, 1, 4, 6, 0.0, (4,4), False)
 		end = [time.time(), time.clock()]
-		print("value iteration time, .clock, .time: ")
+		print("policy iteration time, .clock, .time: ")
 		print (str(end[1] - start[1]) )
 		print (str(end[0] - start[0]) )
 		# save policy/value
@@ -786,3 +830,18 @@ class DiscreteBot:
 			mask = np.not_equal(valueiter_policy, policyiter_policy)
 			count_diff = np.sum(mask)
 			print ("They differ by " + str(count_diff) + " elements")
+	
+	def run_25a(self):
+		self.policy_iteration(0.9, 1, 4, 6, 0.1, (4,4), False)
+		self.plot_grid()
+	
+	def run_25b(self):
+		#errs = [0, 0.05,0.1,0.15,0.2, 0.25]
+		errs = [0.15,0.2, 0.25]
+		for err in errs:
+			self.policy_iteration(0.9, 1, 4, 6, err, (4,4,6), True)
+			print("Now at err = " + str(err))
+			self.plot_grid()
+
+
+

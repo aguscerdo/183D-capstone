@@ -4,7 +4,9 @@ from discrete_bot import DiscreteBot
 
 def main():
 	db = DiscreteBot(6, 6)
-	db.timing_and_comparison()
+	#db.run_25a()
+	db.run_25b()
+	
 	
 	
 
