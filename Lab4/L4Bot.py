@@ -49,6 +49,12 @@ class Environment:
 			x_mar = [x0-self.mar, x0+l+self.mar, x0+l+self.mar, x0-self.mar, x0-self.mar]
 			y_mar = [y0-self.mar, y0-self.mar, y0+w+self.mar, y0+w+self.mar, y0-self.mar]
 			plt.plot(x_mar, y_mar, c='r')
+
+	def random_point(self):
+		# return random point in environment
+		x = numpy.random.uniform(low=0.0, high=self.L)
+		y = numpy.random.uniform(low=0.0, high=self.W)
+		return [x, y]
 			
 
 class L4Bot:
@@ -64,7 +70,8 @@ class L4Bot:
 		self.dimY = dimY
 	
 		self.environment = Environment(dimX, dimY, 85, 90)
-		
+		self.Vertices = []
+		self.Edges = []
 		
 	def add_history(self):
 		
@@ -94,4 +101,41 @@ class L4Bot:
 
 	def load_obstacles(self, obs):
 		self.environment.load_obstacles(obs)
-	
+
+	def random_config(self):
+		# returns random point + theta in config space
+		x, y = self.Environment.random_point()
+		theta = np.random.uniform(low=0.0,high=np.pi)
+		return [x, y, theta]
+
+	def drive(self, start, end):
+		# drive in direction of end from start
+		# To drive: rotate, drive, rotate. 
+
+	def dist(self, start, end):
+		# distance function, actually returns 'time'-like thing (but time proportional to dist)
+		# I.e larger time required means it is "further", so it works out
+		# Given we have to rotate, then drive forward, then rotate again (to match h)
+		# draw line from start -> end, this angle is our intermediate_theta
+		# TODO: find timeToTurnOneRadian, timeToTravelOneMM
+		displacement_vector = [ end[0] - start[0], end[1] - start[1] ]
+		intermediate_theta = np.arctan2(displacement_vector[1], displacement_vector[0])
+		time_taken = abs(start[2] - intermediate_theta)*timeToTurnOneRadian
+		time_taken += np.sqrt(displacement_vector[0]**2 + displacement_vector[1]**2)*timeToTravelOneMM
+		time_taken += abs(end[2] - intermediate_theta)*timeToTurnOneRadian
+		return time_taken
+		
+	def nearest_neighbour(self, point):
+		# gets neareast neighbor of point (and distance)
+		min_dist = self.dist(self.Vertices[0], point)
+		neighbour = self.Vertices[0]
+		for vertice in self.Vertices:
+			d = self.dist(vertice, point)
+			if d < min_dist:
+				min_dist = d
+				neighbour = vertice
+		return neighbour, min_dist
+			
+
+
+		
