@@ -6,6 +6,7 @@ import time
 import copy
 import math
 from math import pi as PI
+from math import *
 
 #Import the VideoCamera feed
 cap = cv2.VideoCapture(0)
@@ -16,12 +17,12 @@ upper_blue = np.array([140, 255, 255])
 lower_white = np.array([0,0,250])
 upper_white = np.array([10,10,255])
 
-from math import *
+#Functions for computing the heading 
 def angle_trunc(a):
     while a < 0.0:
         a += pi * 2
     return a
-
+#Function for computing the heading
 def getAngleBetweenPoints(x_orig, y_orig, x_landmark, y_landmark):
     deltaY = y_landmark - y_orig
     deltaX = x_landmark - x_orig
