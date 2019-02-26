@@ -196,7 +196,7 @@ class L4Bot:
 		else: 
 			direction = -1
 			amount = 2*np.pi - (start - end)
-
+		amount = abs(amount)
 		return amount, direction
 			
 	def dist(self, start, end):
