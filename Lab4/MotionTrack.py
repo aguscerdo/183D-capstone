@@ -113,9 +113,12 @@ while (1):
     #Position Of robot to be Outputted
     Robot_x = x2-60
     Robot_y = 450-y2
+    
+    #Position of the robot head (used for finding the heading)
     Head_x = x-60
     Head_y = 450-y
-
+    
+    #Calculate the heading 
     Angle = getAngleBetweenPoints(Robot_x,Robot_y,Head_x,Head_y)
 
     #Output Lines, Shapes,and Text
