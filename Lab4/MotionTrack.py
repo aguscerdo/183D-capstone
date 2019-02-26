@@ -15,7 +15,7 @@ cap = cv2.VideoCapture(0)
 lower_blue = np.array([90, 0, 50])
 upper_blue = np.array([140, 255, 255])
 lower_white = np.array([0,0,250])
-upper_white = np.array([10,10,255])
+upper_white = np.array([180,255,255])
 
 #Functions for computing the heading 
 def angle_trunc(a):
