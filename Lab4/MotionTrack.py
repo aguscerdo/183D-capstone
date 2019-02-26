@@ -125,7 +125,7 @@ while (1):
     font = cv2.FONT_HERSHEY_SIMPLEX
     cv2.putText(frame, 'X:' + str(round(Robot_x)), (0, 30), font, 1, (200, 255, 255), 2, cv2.LINE_AA)
     cv2.putText(frame, 'Y:' + str(round(Robot_y)), (200, 30), font, 1, (200, 255, 255), 2, cv2.LINE_AA)
-    cv2.putText(frame, 'H:' + str(Angle*57), (350, 30), font, 1, (200, 255, 255), 2, cv2.LINE_AA)
+    cv2.putText(frame, 'H:' + str(Angle), (350, 30), font, 1, (200, 255, 255), 2, cv2.LINE_AA)
 
     cv2.line(frame, center, (int(x), int(y)), (255,0, 0), 2)
     cv2.rectangle(frame, (60, 60), (600, 450), (0, 255, 0), 5)
