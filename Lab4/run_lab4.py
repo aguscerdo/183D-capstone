@@ -5,7 +5,7 @@ def main():
 	obs = [[100, 100, 30, 30], [210, 300, 200, 80]]
 	db.load_obstacles(obs)
 	#db.plot()
-	db.RRT(num_branches=500)
+	db.RRT(num_branches=20)
 	db.visualise_RRT()
 
 

@@ -1,5 +1,5 @@
 import numpy as np
-#from mpl_toolkits.mplot3d import axes3d
+import mpl_toolkits.mplot3d.axes3d as p3
 import matplotlib.pyplot as plt
 
 
@@ -263,15 +263,16 @@ class L4Bot:
 		plt.show()
 
 		#3d visualisation, not yet working!
-		"""
+		
 		fig = plt.figure()
-		ax = fig.add_subplot(1, projection='3d')
+		ax = p3.Axes3D(fig)
 		for edge in self.Edges:
 			v1, v2 = edge
 			x1, y1, th1 = v1
 			x2, y2, th2 = v2
-			ax.plot([x1, x2], [y1, y2], zs=[th1, th2])
-		"""
+			ax.plot([x1, x2], [y1, y2], zs=[th1, th2], color='red')
+		plt.show()
+		
 
 
 
