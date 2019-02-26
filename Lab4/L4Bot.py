@@ -1,6 +1,7 @@
 import numpy as np
 import mpl_toolkits.mplot3d.axes3d as p3
 import matplotlib.pyplot as plt
+from ws4py.client.threadedclient import WebSocketClient
 
 
 # TODO: change these
@@ -77,7 +78,7 @@ class Environment:
 			lower_y_bound = obj[1]-m
 			upper_x_bound = lower_x_bound+obj[2]+m
 			upper_y_bound = lower_y_bound+obj[3]+m
-			if (lower_x_bound < x and x < upper_x_bound and lower_y_bound < y and y < upper_y_bound):
+			if lower_x_bound < x < upper_x_bound and lower_y_bound < y < upper_y_bound:
 				return True
 		return False
 
@@ -138,6 +139,9 @@ class L4Bot:
 		self.environment = Environment(dimX, dimY, 85, 90)
 		self.vertices = []
 		self.edges = []
+		
+		self.socket = SocketWrapper()
+		
 		
 	def add_history(self):
 		
@@ -318,8 +322,24 @@ class L4Bot:
 		plt.show()
 		
 
-
-
-
-
-
+class SocketWrapper:
+	def __init__(self):
+		self.addr = "ws://192.168.1.65:81/"
+		self.socket = WebSocketClient(self.addr)
+		
+		self.socket.connect()
+		print('Socket connected')
+	
+	
+	def send(self, payload):
+		self.socket.send(payload)
+		print('Payload sent: {}'.format(payload))
+	
+	
+	def send_motion(self, u_left, u_right):
+		pass
+		# TODO check how they format it
+	
+	
+	def close(self):
+		self.close()
