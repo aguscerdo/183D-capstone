@@ -81,6 +81,48 @@ class Environment:
 				return True
 		return False
 
+
+	def plot_3d_obstacles(self, ax):
+		for obstacle in self.obstacles:
+			x0 = obstacle[0]
+			y0 = obstacle[1]
+			l = obstacle[2]
+			w  = obstacle[3]
+			
+			x_mar = np.asarray([
+				x0-self.mar, x0-self.mar, x0-self.mar,
+				x0+l+self.mar, x0+l+self.mar, x0+l+self.mar,
+				x0+l+self.mar, x0+l+self.mar, x0+l+self.mar,
+				x0-self.mar, x0-self.mar, x0-self.mar,
+				x0-self.mar, x0-self.mar, x0-self.mar,
+			])
+			
+			y_mar = np.asarray([
+				y0-self.mar, y0-self.mar, y0-self.mar,
+				y0-self.mar, y0-self.mar, y0-self.mar,
+				y0+w+self.mar, y0+w+self.mar, y0+w+self.mar,
+				y0+w+self.mar, y0+w+self.mar, y0+w+self.mar,
+				y0-self.mar, y0-self.mar, y0-self.mar
+			])
+			
+			x_mar = np.concatenate((x_mar, x_mar))
+			y_mar = np.concatenate((y_mar, y_mar))
+			
+			h_mar = np.asarray([
+				0, 1, 0,
+				0, 1, 0,
+				0, 1, 0,
+				0, 1, 0,
+				0, 1, 0,
+				
+			], dtype=np.float)
+			
+			h_mar = np.append(h_mar, (1-h_mar))
+			h_mar *= 2*np.pi
+			
+			ax.plot(x_mar, y_mar, h_mar, c='k')
+			
+
 class L4Bot:
 	def __init__(self, dimX, dimY, x0, y0, h0):
 		self.x = x0
@@ -94,8 +136,8 @@ class L4Bot:
 		self.dimY = dimY
 	
 		self.environment = Environment(dimX, dimY, 85, 90)
-		self.Vertices = []
-		self.Edges = []
+		self.vertices = []
+		self.edges = []
 		
 	def add_history(self):
 		
@@ -176,8 +218,8 @@ class L4Bot:
 				return None
 			curr_time += step
 			# we dont add here in original RRT, i think we should(?)
-			#self.Vertices.append(next_state) 
-			#self.Edges.append([state, next_state])
+			#self.vertices.append(next_state) 
+			#self.edges.append([state, next_state])
 			state = np.copy(next_state)
 		return state
 
@@ -230,9 +272,9 @@ class L4Bot:
 	def nearest_neighbour(self, point):
 		# gets neareast neighbor of point (and distance)
 		action_set = []
-		min_dist, action_set = self.dist(self.Vertices[0], point)
-		neighbour = self.Vertices[0]
-		for vertice in self.Vertices:
+		min_dist, action_set = self.dist(self.vertices[0], point)
+		neighbour = self.vertices[0]
+		for vertice in self.vertices:
 			d, actions = self.dist(vertice, point)
 			if d < min_dist:
 				min_dist = d
@@ -243,20 +285,20 @@ class L4Bot:
 	def RRT(self, start_state=None, num_branches=10):
 		if (start_state is None):
 			start_state = [self.x, self.y, self.h]
-		self.Vertices.append(start_state)
+		self.vertices.append(start_state)
 		for k in range(num_branches):
 			randpt = self.random_config()
 			neighbor, actions, dist = self.nearest_neighbour(randpt)
-			new_state = self.drive(neighbor, actions, t=10)
+			new_state = self.drive(neighbor, actions, t=1)
 			if new_state is not None:
-				self.Vertices.append(new_state)
-				self.Edges.append([neighbor, new_state])
+				self.vertices.append(new_state)
+				self.edges.append([neighbor, new_state])
 	
 	def visualise_RRT(self):
 		#2d visualisation
 		#plt.figure(1)
 		#plt.subplot(111)
-		for edge in self.Edges:
+		for edge in self.edges:
 			xs = [edge[i][0] for i in range(2)]
 			ys = [edge[i][1] for i in range(2)]
 			plt.plot(xs, ys, 'r')
@@ -266,11 +308,13 @@ class L4Bot:
 		
 		fig = plt.figure()
 		ax = p3.Axes3D(fig)
-		for edge in self.Edges:
+		for edge in self.edges:
 			v1, v2 = edge
 			x1, y1, th1 = v1
 			x2, y2, th2 = v2
 			ax.plot([x1, x2], [y1, y2], zs=[th1, th2], color='red')
+		
+		self.environment.plot_3d_obstacles(ax)
 		plt.show()
 		
 
