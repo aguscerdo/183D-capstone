@@ -28,6 +28,12 @@ def getAngleBetweenPoints(x_orig, y_orig, x_landmark, y_landmark):
     deltaX = x_landmark - x_orig
     return angle_trunc(atan2(deltaY, deltaX))
 
+#Initialize because sometimes we get errors when they dont exist yet
+    x2=0
+    y2=0
+    y=0
+    x=0
+    
 while (1):
     #Read in the frame and create a copy for each circle
     _, frame = cap.read()
@@ -48,11 +54,7 @@ while (1):
     cnts = imutils.grab_contours(cnts)
     center = None
 
-    #Initialize because sometimes we get errors when they dont exist yet
-    x2=0
-    y2=0
-    y=0
-    x=0
+    
     # only proceed if at least one contour was found
     if len(cnts) > 0:
         # find the largest contour in the mask, then use
