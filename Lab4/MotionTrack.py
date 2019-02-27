@@ -111,8 +111,8 @@ while (1):
 
 
     #Position Of robot to be Outputted
-    Robot_x = x2-60
-    Robot_y = 450-y2
+    Robot_x = ((x2-60)* 711) / 540
+    Robot_y = ((450-y2)*482) / 450
     
     #Position of the robot head (used for finding the heading)
     Head_x = x-60
