@@ -29,10 +29,10 @@ def getAngleBetweenPoints(x_orig, y_orig, x_landmark, y_landmark):
     return angle_trunc(atan2(deltaY, deltaX))
 
 #Initialize because sometimes we get errors when they dont exist yet
-    x2=0
-    y2=0
-    y=0
-    x=0
+x2=0
+y2=0
+y=0
+x=0
     
 while (1):
     #Read in the frame and create a copy for each circle
