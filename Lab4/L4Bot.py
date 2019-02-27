@@ -5,9 +5,8 @@ import time
 #from ws4py.client.threadedclient import WebSocketClient
 
 
-# TODO: change these
-timeToTurnOneRadian = 1.0 # 1000 ms
-timeToTravelOneMM = 0.01 # 10 ms
+timeToTurnOneRadian = 0.584 # 1000 ms
+timeToTravelOneMM = 0.01529 # 10 ms
 xconst = 1.0/360/timeToTravelOneMM 
 yconst = 1.0/360/timeToTravelOneMM
 thconst = 1.0/180/timeToTurnOneRadian
