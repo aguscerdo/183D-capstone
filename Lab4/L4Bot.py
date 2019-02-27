@@ -2,7 +2,7 @@ import numpy as np
 import mpl_toolkits.mplot3d.axes3d as p3
 import matplotlib.pyplot as plt
 import time
-from ws4py.client.threadedclient import WebSocketClient
+#from ws4py.client.threadedclient import WebSocketClient
 
 
 # TODO: change these
@@ -168,7 +168,7 @@ class L4Bot:
 		self.vertices = []
 		self.edges = []
 		
-		self.socket = SocketWrapper()
+		#self.socket = SocketWrapper()
 		
 		
 	def add_history(self):
@@ -226,7 +226,7 @@ class L4Bot:
 		new_state[2] = th
 		return new_state
 
-	def drive(self, start, actions, t=2, step=0.1):
+	def drive(self, start, actions, t=1, step=0.1):
 		# drive using actions from start, for t seconds,
 		# step size tells us how many vertices/edges to add to our graph
 		state = np.copy(start)
@@ -238,22 +238,33 @@ class L4Bot:
 		threshold = actions[0][2]
 		while(i < num_actions and curr_time < t):
 			# check if we need to go to new action
-			if (curr_time > threshold):
+			if (curr_time >= threshold):
 				i = i + 1
 				if (i < num_actions):
 					threshold += actions[i][2]
 				else: 
 					return state
 			# get next state and grow tree, if no collision
-			next_state = self.move(state, actions[i][0], step)
+			action_length = step
+			if (step <= 0):
+				action_length = min(actions[i][2], (t - curr_time))
+			next_state = self.move(state, actions[i][0], action_length)
 			if (self.environment.collision(next_state)):
 				return None
-			curr_time += step
+			curr_time += action_length
 			# we dont add here in original RRT, i think we should(?)
 			#self.vertices.append(next_state) 
 			#self.edges.append([state, next_state])
 			state = np.copy(next_state)
 		return state
+
+	def reverse(self, actions):
+		# reverses actions, instead of going A->B via action a, now assume B->A via action a'
+		new_actions = []
+		for action in actions:
+			new_action = [ (180-a) for a in action[0]]
+			new_actions.append([new_action, action[1], action[2]])
+		return np.flip(new_actions, axis=0)
 
 	def turn(self, start, end):
 		# finds direction and amount to turn to get from start to end
@@ -321,28 +332,42 @@ class L4Bot:
 		for k in range(num_branches):
 			randpt = self.random_config()
 			neighbor, actions, dist = self.nearest_neighbour(randpt)
-			new_state = self.drive(neighbor, actions, t=1)
+			new_state = self.drive(neighbor, actions, t=1, step=0.1)
 			if new_state is not None:
 				self.vertices.append(new_state)
-				self.edges.append([neighbor, new_state])
+				self.edges.append([neighbor, new_state, actions])
 	
-	def visualise_RRT(self):
+	def reverse_RRT(self, goal_state=None, num_branches=10):
+		if (goal_state is None):
+			goal_state = [self.x, self.y, self.h]
+		self.vertices.append(goal_state)
+		for k in range(num_branches):
+			randpt = self.random_config()
+			neighbor, actions, dist = self.nearest_neighbour(randpt)
+			actions = self.reverse(actions)
+			new_state = self.drive(neighbor, actions, t=1, step=0.1)
+			if new_state is not None:
+				self.vertices.append(new_state)
+				self.edges.append([neighbor, new_state, actions])
+
+	def visualise_RRT(self,show3d=False):
 		for edge in self.edges:
 			xs = [edge[i][0] for i in range(2)]
 			ys = [edge[i][1] for i in range(2)]
 			plt.plot(xs, ys, 'r')
 		plt.show()
 		
-		fig = plt.figure()
-		ax = p3.Axes3D(fig)
-		for edge in self.edges:
-			v1, v2 = edge
-			x1, y1, th1 = v1
-			x2, y2, th2 = v2
-			ax.plot([x1, x2], [y1, y2], zs=[th1, th2], color='red')
-		
-		self.environment.plot_3d_obstacles(ax)
-		plt.show()
+		if (show3d):
+			fig = plt.figure()
+			ax = p3.Axes3D(fig)
+			for edge in self.edges:
+				v1, v2, _ = edge
+				x1, y1, th1 = v1
+				x2, y2, th2 = v2
+				ax.plot([x1, x2], [y1, y2], zs=[th1, th2], color='red')
+			
+			self.environment.plot_3d_obstacles(ax)
+			plt.show()
 
 	def plot_path(self, path, start, goal, v_initial, v_final):
 		fig = plt.figure()
@@ -406,7 +431,8 @@ class L4Bot:
 				if (v_next is not None and not visit(v_next)):
 					n2 -= 1
 					#print("next: " + str(v_next))
-					path.append([curr, v_next])
+					action = e[2]
+					path.append([curr, v_next, action])
 					curr = np.copy(v_next)
 					if (np.array_equal(curr, v_final)):
 						stopCondition = True
@@ -419,14 +445,4 @@ class L4Bot:
 				
 		self.plot_path(path, start, goal, v_initial, v_final)
 		return path
-			
-
-					
-			
-			
-
-
-		
-			
-
 			
