@@ -12,7 +12,7 @@ from math import *
 cap = cv2.VideoCapture(0)
 
 #Set the HSV bounds for the two tags
-lower_blue = np.array([90, 100, 50])
+lower_blue = np.array([90, 100, 90])
 upper_blue = np.array([140, 255, 255])
 lower_white = np.array([0,0,200])
 upper_white = np.array([180,255,255])
