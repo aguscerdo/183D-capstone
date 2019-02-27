@@ -2,6 +2,7 @@ import numpy as np
 import mpl_toolkits.mplot3d.axes3d as p3
 import matplotlib.pyplot as plt
 import time
+from ws4py.client.threadedclient import WebSocketClient
 
 
 # TODO: change these
@@ -166,6 +167,9 @@ class L4Bot:
 		self.environment = Environment(dimX, dimY, 85, 90)
 		self.vertices = []
 		self.edges = []
+		
+		self.socket = SocketWrapper()
+		
 		
 	def add_history(self):
 		
