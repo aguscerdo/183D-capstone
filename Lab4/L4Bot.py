@@ -1,6 +1,7 @@
 import numpy as np
 import mpl_toolkits.mplot3d.axes3d as p3
 import matplotlib.pyplot as plt
+import time
 
 
 # TODO: change these
@@ -75,8 +76,8 @@ class Environment:
 		for obj in self.obstacles:
 			lower_x_bound = obj[0]-m
 			lower_y_bound = obj[1]-m
-			upper_x_bound = lower_x_bound+obj[2]+m
-			upper_y_bound = lower_y_bound+obj[3]+m
+			upper_x_bound = lower_x_bound+obj[2]+m*2
+			upper_y_bound = lower_y_bound+obj[3]+m*2
 			if (lower_x_bound < x and x < upper_x_bound and lower_y_bound < y and y < upper_y_bound):
 				return True
 		return False
@@ -121,7 +122,34 @@ class Environment:
 			h_mar *= 2*np.pi
 			
 			ax.plot(x_mar, y_mar, h_mar, c='k')
+
+	def plot_2d_obstacles(self):
+		for obstacle in self.obstacles:
+			x0 = obstacle[0]
+			y0 = obstacle[1]
+			l = obstacle[2]
+			w  = obstacle[3]
 			
+			x_mar = np.asarray([
+				x0-self.mar, x0-self.mar, x0-self.mar,
+				x0+l+self.mar, x0+l+self.mar, x0+l+self.mar,
+				x0+l+self.mar, x0+l+self.mar, x0+l+self.mar,
+				x0-self.mar, x0-self.mar, x0-self.mar,
+				x0-self.mar, x0-self.mar, x0-self.mar,
+			])
+			
+			y_mar = np.asarray([
+				y0-self.mar, y0-self.mar, y0-self.mar,
+				y0-self.mar, y0-self.mar, y0-self.mar,
+				y0+w+self.mar, y0+w+self.mar, y0+w+self.mar,
+				y0+w+self.mar, y0+w+self.mar, y0+w+self.mar,
+				y0-self.mar, y0-self.mar, y0-self.mar
+			])
+			
+			x_mar = np.concatenate((x_mar, x_mar))
+			y_mar = np.concatenate((y_mar, y_mar))
+			
+			plt.plot(x_mar, y_mar, c='k')	
 
 class L4Bot:
 	def __init__(self, dimX, dimY, x0, y0, h0):
@@ -295,16 +323,11 @@ class L4Bot:
 				self.edges.append([neighbor, new_state])
 	
 	def visualise_RRT(self):
-		#2d visualisation
-		#plt.figure(1)
-		#plt.subplot(111)
 		for edge in self.edges:
 			xs = [edge[i][0] for i in range(2)]
 			ys = [edge[i][1] for i in range(2)]
 			plt.plot(xs, ys, 'r')
 		plt.show()
-
-		#3d visualisation, not yet working!
 		
 		fig = plt.figure()
 		ax = p3.Axes3D(fig)
@@ -316,10 +339,90 @@ class L4Bot:
 		
 		self.environment.plot_3d_obstacles(ax)
 		plt.show()
+
+	def plot_path(self, path, start, goal, v_initial, v_final):
+		fig = plt.figure()
+		for edge in self.edges:
+			xs = [edge[i][0] for i in range(2)]
+			ys = [edge[i][1] for i in range(2)]
+			plt.plot(xs, ys, 'r')
+		for edge in path:
+			xs = [edge[i][0] for i in range(2)]
+			ys = [edge[i][1] for i in range(2)]
+			plt.plot(xs, ys, 'g')
+		plt.scatter(start[0], start[1], c='b', s=50, alpha=0.8)
+		plt.scatter(goal[0], goal[1], c='y', s=50, alpha=0.8)
+		plt.scatter(v_initial[0], v_initial[1], c='c', s=50, alpha=0.8)
+		plt.scatter(v_final[0], v_final[1], c='k', s=50, alpha=0.8)
+		self.environment.plot_2d_obstacles()
+		plt.show()
+
+	
+
+	def findPath(self, start=None, goal=None):
 		
+		if (start is None):
+			start = [self.x, self.y, self.h]
+		if (goal is None):
+			goal = self.random_config()
+		print("Finding path: " + str(start) + "-->" + str(goal))
+		# find nearest neighbors
+		v_initial, _, _ = self.nearest_neighbour(start)
+		v_final, _, _ = self.nearest_neighbour(goal)
+		print("Finding path: " + str(v_initial) + "-->" + str(v_final))
+		# find path via depth-first search
+		visited = [[v,np.array_equal(v, v_initial)] for v in self.vertices]
+		curr = np.copy(v_initial)
+		v_next = []
+		path = []
+		def visit(vertice):
+			for i in range(len(visited)):
+				if ( np.array_equal(visited[i][0], vertice)):
+					if (visited[i][1]):
+						return True
+					else:
+						visited[i][1] = True
+						return False
+			print("problem!>")
+		n2 = len(visited)
+		stopCondition = False
+		while not stopCondition:
+			pop = True
+			#print("step")
+			#print("curr: " + str(curr))
+			#print("Num visited: " + str(N))
+			#print("Num not visited: " + str(n2))
+			for e in self.edges:
+				if np.array_equal(e[0], curr):
+					v_next = e[1]
+				elif np.array_equal(e[1], curr):
+					v_next = e[0]
+				else:
+					v_next = None
+				if (v_next is not None and not visit(v_next)):
+					n2 -= 1
+					#print("next: " + str(v_next))
+					path.append([curr, v_next])
+					curr = np.copy(v_next)
+					if (np.array_equal(curr, v_final)):
+						stopCondition = True
+					pop = False
+					break
+			if (pop):
+				#print("pop!")
+				curr = path[-1][0]
+				path = path[:-1]
+				
+		self.plot_path(path, start, goal, v_initial, v_final)
+		return path
+			
+
+					
+			
+			
 
 
+		
+			
 
-
-
-
+			

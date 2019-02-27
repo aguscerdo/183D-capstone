@@ -5,9 +5,10 @@ def main():
 	obs = [[100, 100, 30, 30], [210, 300, 200, 80]]
 	db.load_obstacles(obs)
 	#db.plot()
-	db.RRT(num_branches=20)
+	db.RRT(num_branches=1000)
 	db.visualise_RRT()
-
+	p = db.findPath()
+	#print(p)
 
 if __name__ == '__main__':
 	main()
