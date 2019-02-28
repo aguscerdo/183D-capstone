@@ -166,6 +166,7 @@ class L4Bot:
 	
 		self.environment = Environment(dimX, dimY, 85, 90)
 		self.vertices = []
+		self.funnel_verts = []
 		self.edges = []
 		
 		self.socket = SocketWrapper()
@@ -353,19 +354,19 @@ class L4Bot:
 				self.edges.append([neighbor, new_state, actions])
 	
 	def reverse_RRT(self, goal_state=None, num_branches=10):
-		new_vertices = []
+		self.funnel_verts = []
 		if (goal_state is None):
 			goal_state = [self.x, self.y, self.h]
-		new_vertices.append(goal_state)
+		self.funnel_verts.append(goal_state)
 		for k in range(num_branches):
 			randpt = self.random_config()
-			neighbor, actions, dist = self.nearest_neighbour(randpt, new_vertices)
+			neighbor, actions, dist = self.nearest_neighbour(randpt, self.funnel_verts)
 			actions = self.reverse(actions)
 			new_state = self.drive(neighbor, actions, t=1, step=0)
 			if new_state is not None:
 				new_vertices.append(new_state)
-				self.vertices.append(new_state)
-				self.edges.append([new_state, neighbor, actions])
+				#self.vertices.append(new_state)
+				#self.edges.append([new_state, neighbor, actions])
 		
 
 	def visualise_RRT(self,show3d=False):
@@ -514,17 +515,36 @@ class L4Bot:
 			actions = p[0][2]
 			p = p[1:]
 			print("take actions: " + str(actions))
-			for action in actions:
-				curr = self.move(curr, action[0], action[2])
-				#websocket: input uL = action[0][0], uR = action[0][1], how_long=time=action[2] 
-				#change uL, uR based on if we are on course or not (method A- chile suggestion)
-				#curr = position+from+camera/state
+			self.send_actions(actions)
+			curr = state_estimate()
 			ideal_pos = p[0][0]
 			if (self.statesEqual(curr, ideal_pos)):
+				print("State is close enough to ideal")
 				#this means we are good!
 			else:
+				print("funnel back to: " + str(ideal_pos))
 				#now funnel back to path (method 1- tameez suggestion)
+				neighbor, actions, _ = self.nearest_neighbour(curr, verts=self.funnel_verts)
+				while(not self.statesEqual(curr, ideal_pos):
+					while(not self.statesEqual(curr, neighbor)):
+						self.reverse_RRT(ideal_pos, num_branches=100)
+						neighbor, actions, _ = self.nearest_neighbour(curr, verts=self.funnel_verts)
+					#take actions
+					self.send_actions(actions)
+					curr = state_estimate()
 			stopCondition = self.statesEqual(curr, closest)
+
+	def send_actions(self, actions):
+		for action in actions:
+			start_time = time.time()
+			step = 0.1
+			now_time = time.time()
+			threshold = action[2]
+			while (now_time - start_time < threshold):
+				self.send_socket(action[0][0], action[0][1])
+				time.delay(step)
+				now_time = time.time()
+		
 
 	def send_socket(self, uL, uR):
 		self.socket.send_motion(uL, uR)
