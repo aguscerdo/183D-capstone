@@ -14,7 +14,7 @@ class SocketWrapper:
 
 
 	def send_motion(self, u_left, u_right):
-		payload = [126, u_left, u_right]
+		payload = [126, int(u_left), int(u_right)]
 		payload = bytearray(payload)
 
 		self.socket.send(bytearray(payload), True)
