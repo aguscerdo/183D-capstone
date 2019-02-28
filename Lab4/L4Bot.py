@@ -6,8 +6,8 @@ from socket_wrapper import SocketWrapper
 
 
 # TODO: change these
-timeToTurnOneRadian = 1.0 # 1000 ms
-timeToTravelOneMM = 0.01 # 10 ms
+timeToTurnOneRadian = 0.584 # 1000 ms
+timeToTravelOneMM = 0.01529 # 10 ms
 xconst = 1.0/360/timeToTravelOneMM 
 yconst = 1.0/360/timeToTravelOneMM
 thconst = 1.0/180/timeToTurnOneRadian
@@ -516,7 +516,7 @@ class L4Bot:
 			p = p[1:]
 			print("take actions: " + str(actions))
 			self.send_actions(actions)
-			curr = state_estimate()
+			curr = self.state_estimate()
 			ideal_pos = p[0][0]
 			if (self.statesEqual(curr, ideal_pos)):
 				print("State is close enough to ideal")
@@ -525,14 +525,17 @@ class L4Bot:
 				print("funnel back to: " + str(ideal_pos))
 				#now funnel back to path (method 1- tameez suggestion)
 				neighbor, actions, _ = self.nearest_neighbour(curr, verts=self.funnel_verts)
-				while(not self.statesEqual(curr, ideal_pos):
+				while(not self.statesEqual(curr, ideal_pos)):
 					while(not self.statesEqual(curr, neighbor)):
 						self.reverse_RRT(ideal_pos, num_branches=100)
 						neighbor, actions, _ = self.nearest_neighbour(curr, verts=self.funnel_verts)
 					#take actions
 					self.send_actions(actions)
-					curr = state_estimate()
+					curr = self.state_estimate()
 			stopCondition = self.statesEqual(curr, closest)
+
+	def state_estimate(self):
+		return [robot_x, robot_y, angle]
 
 	def send_actions(self, actions):
 		for action in actions:
