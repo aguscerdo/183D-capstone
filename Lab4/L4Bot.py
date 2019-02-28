@@ -207,14 +207,22 @@ class L4Bot:
 		return [x, y, theta]
 
 
-	def move(self, start, action, t):
+	def move(self, start, action, t, err=0.0):
 		# gets next state from start given action and time t
 		th = start[2]
 		wl = (action[0]-90.0)
 		wr = (action[1]-90.0)
+		
 		dx =  1.0*t*xconst * np.cos(th) * (wl + wr)
 		dy = 1.0*t*yconst * np.sin(th) * (wl + wr)
 		dth = 1.0*t*thconst * (wl - wr)
+		if (err > 0):
+			ex = np.random.normal(1,err)
+			ey = np.random.normal(1,err)
+			eth = np.random.normal(1,err)
+			dx *= ex
+			dy *= ey
+			dth *= eth
 		new_state = 1.0*np.copy(start)
 		new_state[0] += dx
 		new_state[1] += dy
@@ -264,7 +272,12 @@ class L4Bot:
 		for action in actions:
 			new_action = [ (180-a) for a in action[0]]
 			new_actions.append([new_action, action[1], action[2]])
-		return np.flip(new_actions, axis=0)
+		#print("actions!")
+		#print(actions)
+		new_actions = np.flip(new_actions, axis=0)
+		#print("reverse actions!")
+		#print(new_actions)
+		return new_actions
 
 	def turn(self, start, end):
 		# finds direction and amount to turn to get from start to end
@@ -312,12 +325,14 @@ class L4Bot:
 		time_taken = t1 + t2 + t3
 		return time_taken, actions
 		
-	def nearest_neighbour(self, point):
+	def nearest_neighbour(self, point, verts=None):
+		if (verts is None):
+			verts = self.vertices
 		# gets neareast neighbor of point (and distance)
 		action_set = []
-		min_dist, action_set = self.dist(self.vertices[0], point)
-		neighbour = self.vertices[0]
-		for vertice in self.vertices:
+		min_dist, action_set = self.dist(verts[0], point)
+		neighbour = verts[0]
+		for vertice in verts:
 			d, actions = self.dist(vertice, point)
 			if d < min_dist:
 				min_dist = d
@@ -332,23 +347,26 @@ class L4Bot:
 		for k in range(num_branches):
 			randpt = self.random_config()
 			neighbor, actions, dist = self.nearest_neighbour(randpt)
-			new_state = self.drive(neighbor, actions, t=1, step=0.1)
+			new_state = self.drive(neighbor, actions, t=1, step=0)
 			if new_state is not None:
 				self.vertices.append(new_state)
 				self.edges.append([neighbor, new_state, actions])
 	
 	def reverse_RRT(self, goal_state=None, num_branches=10):
+		new_vertices = []
 		if (goal_state is None):
 			goal_state = [self.x, self.y, self.h]
-		self.vertices.append(goal_state)
+		new_vertices.append(goal_state)
 		for k in range(num_branches):
 			randpt = self.random_config()
-			neighbor, actions, dist = self.nearest_neighbour(randpt)
+			neighbor, actions, dist = self.nearest_neighbour(randpt, new_vertices)
 			actions = self.reverse(actions)
-			new_state = self.drive(neighbor, actions, t=1, step=0.1)
+			new_state = self.drive(neighbor, actions, t=1, step=0)
 			if new_state is not None:
+				new_vertices.append(new_state)
 				self.vertices.append(new_state)
-				self.edges.append([neighbor, new_state, actions])
+				self.edges.append([new_state, neighbor, actions])
+		
 
 	def visualise_RRT(self,show3d=False):
 		for edge in self.edges:
@@ -386,10 +404,7 @@ class L4Bot:
 		self.environment.plot_2d_obstacles()
 		plt.show()
 
-	
-
 	def findPath(self, start=None, goal=None):
-		
 		if (start is None):
 			start = [self.x, self.y, self.h]
 		if (goal is None):
@@ -424,8 +439,9 @@ class L4Bot:
 			for e in self.edges:
 				if np.array_equal(e[0], curr):
 					v_next = e[1]
-				elif np.array_equal(e[1], curr):
-					v_next = e[0]
+				# directed graph!
+				#elif np.array_equal(e[1], curr):
+				#	v_next = e[0]
 				else:
 					v_next = None
 				if (v_next is not None and not visit(v_next)):
@@ -446,3 +462,70 @@ class L4Bot:
 		self.plot_path(path, start, goal, v_initial, v_final)
 		return path
 			
+	def statesEqual(self, state1, state2, tol=10):
+		diff = np.abs(np.subtract(state1, state2))
+		print("diff is: " + str(diff))
+		if (diff[0] < tol and diff[1] < tol and diff[2] < tol/2):
+			return True
+		return False
+
+	def funnel(self, path):
+		fig = plt.figure()
+		for edge in path:
+			vertex = edge[0]
+			plt.scatter(vertex[0], vertex[1], c='g', s=50, alpha=0.9)
+			xs = [edge[i][0] for i in range(2)]
+			ys = [edge[i][1] for i in range(2)]
+			plt.plot(xs, ys, 'g')
+			self.reverse_RRT(vertex, num_branches=50)
+		for edge in self.edges:
+			xs = [edge[i][0] for i in range(2)]
+			ys = [edge[i][1] for i in range(2)]
+			plt.plot(xs, ys, 'r')
+			
+		self.environment.plot_2d_obstacles()
+		plt.show()
+
+
+	def run(self, start, goal, branches_per_evolution=10, num_evolutions=10):
+		for i in range(num_evolutions):
+			self.RRT(start, num_branches=branches_per_evolution)
+			self.visualise_RRT()
+		closest, _, _ = self.nearest_neighbour(goal)
+		stopCondition = self.statesEqual(closest, goal)
+		tol = 10
+		while not stopCondition:
+			print("adding more branches!")
+			tol += 5
+			print("tolerance now: " + str(tol))
+			self.RRT(start, num_branches=50)
+			closest, _, _ = self.nearest_neighbour(goal)
+			stopCondition = self.statesEqual(closest, goal, tol)
+		self.visualise_RRT()
+		curr = np.copy(start)
+		stopCondition = self.statesEqual(curr, closest)
+		# get best path, and create funnels
+		p = self.findPath(curr, closest)
+		self.funnel(p)
+		print("done funnel!")
+		self.visualise_RRT()
+		p = self.findPath(curr, closest)
+		while not stopCondition:
+			actions = p[0][2]
+			p = p[1:]
+			print("take actions: " + str(actions))
+			for action in actions:
+				curr = self.move(curr, action[0], action[2])
+				#websocket: input uL = action[0][0], uR = action[0][1], how_long=time=action[2] 
+				#change uL, uR based on if we are on course or not (method A- chile suggestion)
+				#curr = position+from+camera/state
+			ideal_pos = p[0][0]
+			if (self.statesEqual(curr, ideal_pos)):
+				#this means we are good!
+			else:
+				#now funnel back to path (method 1- tameez suggestion)
+			stopCondition = self.statesEqual(curr, closest)
+
+		
+
+
