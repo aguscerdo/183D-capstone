@@ -170,6 +170,7 @@ class L4Bot:
 		self.vertices = []
 		self.funnel_verts = []
 		self.edges = []
+		self.funnel_verts_and_actions = []
 
 		self.socket = SocketWrapper()
 
@@ -367,6 +368,7 @@ class L4Bot:
 			new_state = self.drive(neighbor, actions, t=1, step=0)
 			if new_state is not None:
 				self.funnel_verts.append(new_state)
+				self.funnel_verts_and_actions.append([new_state, actions])
 		# self.vertices.append(new_state)
 		# self.edges.append([new_state, neighbor, actions])
 
@@ -501,6 +503,30 @@ class L4Bot:
 			for edge in path:
 				vertex = edge[0]
 				self.reverse_RRT(vertex, num_branches=50)
+
+	def run2(self, start, goal, branches_per_evolution=1000, num_evolutions=10,plots=False):
+		for i in range(num_evolutions):
+			self.reverse_RRT(goal, num_branches=branches_per_evolution)
+			if plots:
+				self.visualise_RRT()
+		closest, _, _ = self.nearest_neighbour(start, self.funnel_verts)
+		print("closest"+str(closest))
+		print("start"+str(start))
+		print("these should be close ^^")
+		stopCondition = self.statesEqual(closest, goal)
+		tol = 10
+		curr = np.copy(closest)
+		while not stopCondition:
+			#self.reverse_RRT(goal, num_branches=branches_per_evolution)
+			closest, _, _ = self.nearest_neighbour(curr, self.funnel_verts)
+			for vertex_and_action in self.funnel_verts_and_actions:
+				v, actions = vertex_and_action
+				if (self.statesEqual(v, closest)):
+					break
+			self.send_actions(actions)
+			curr = self.state_estimate()
+			stopCondition = self.statesEqual(curr, goal, tol)
+
 
 	def run(self, start, goal, branches_per_evolution=10, num_evolutions=10,plots=False):
 
