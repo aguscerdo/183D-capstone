@@ -6,15 +6,18 @@ from socket_wrapper import SocketWrapper
 import settings
 
 # TODO: change these
+RightTurn = [0.0, 180.0]
+LeftTurn = [180.0, 0.0]
+ForwardMovement = [180.0, 180.0]
+
+
 timeToTurnOneRadian = 0.584  # 1000 ms
-timeToTravelOneMM = 0.01529  # 10 ms
+timeToTravelOneMM = 0.0529   # 10 ms
 xconst = 1.0 / 360 / timeToTravelOneMM
 yconst = 1.0 / 360 / timeToTravelOneMM
 thconst = 1.0 / 180 / timeToTurnOneRadian
 
-RightTurn = [0.0, 180.0]
-LeftTurn = [180.0, 0.0]
-ForwardMovement = [140.0, 140.0]
+
 
 class Environment:
 	def __init__(self, L, W, robL, robW):
@@ -163,7 +166,7 @@ class L4Bot:
 		self.dimX = dimX
 		self.dimY = dimY
 
-		self.environment = Environment(dimX, dimY, 85, 90)
+		self.environment = Environment(dimX, dimY, 111, 111)
 		self.vertices = []
 		self.funnel_verts = []
 		self.edges = []
@@ -372,6 +375,8 @@ class L4Bot:
 			xs = [edge[i][0] for i in range(2)]
 			ys = [edge[i][1] for i in range(2)]
 			plt.plot(xs, ys, 'r')
+		self.environment.plot_2d_obstacles()
+		plt.title('RRT')
 		plt.show()
 
 		if (show3d):
@@ -433,10 +438,10 @@ class L4Bot:
 		stopCondition = False
 		while not stopCondition:
 			pop = True
-			# print("step")
-			# print("curr: " + str(curr))
-			# print("Num visited: " + str(N))
-			# print("Num not visited: " + str(n2))
+			print("step")
+			print("curr: " + str(curr))
+			#print("Num visited: " + str(N))
+			#print("Num not visited: " + str(n2))
 			for e in self.edges:
 				if np.array_equal(e[0], curr):
 					v_next = e[1]
@@ -450,24 +455,28 @@ class L4Bot:
 					# print("next: " + str(v_next))
 					action = e[2]
 					path.append([curr, v_next, action])
+					print(str(path[-1]))
 					curr = np.copy(v_next)
 					if (np.array_equal(curr, v_final)):
 						stopCondition = True
 					pop = False
 					break
 			if (pop):
-				# print("pop!")
+				print("pop!")
+				print("curra"+str(curr))
 				curr = path[-1][0]
 				path = path[:-1]
+
+
+
 		if (plots):
 			self.plot_path(path, start, goal, v_initial, v_final)
 		return path
 
 	def statesEqual(self, state1, state2, tol=10):
 		diff = np.abs(np.subtract(state1, state2))
-		print("diff is: " + str(diff))
-		print("we think x,y,th = " + str(self.state_estimate()))
-		if (diff[0] < tol and diff[1] < tol and diff[2] < tol / 2 /180 *np.pi):
+		print("Difference" + str(diff))
+		if (diff[0] < tol and diff[1] < tol and diff[2] < (tol*2)*(np.pi/180)):
 			return True
 		return False
 
@@ -494,15 +503,20 @@ class L4Bot:
 				self.reverse_RRT(vertex, num_branches=50)
 
 	def run(self, start, goal, branches_per_evolution=10, num_evolutions=10,plots=False):
+
 		for i in range(num_evolutions):
 			self.RRT(start, num_branches=branches_per_evolution)
-			self.visualise_RRT()
+			if plots:
+				self.visualise_RRT()
 		closest, _, _ = self.nearest_neighbour(goal)
+		print("closest"+str(closest))
+		print("goal"+str(goal))
+
 		stopCondition = self.statesEqual(closest, goal)
 		tol = 10
 		while not stopCondition:
 			print("adding more branches!")
-			tol += 5
+			tol += 50
 			print("tolerance now: " + str(tol))
 			self.RRT(start, num_branches=50)
 			closest, _, _ = self.nearest_neighbour(goal)
@@ -510,13 +524,15 @@ class L4Bot:
 		if(plots):
 			self.visualise_RRT()
 		curr = np.copy(start)
+		print("current" + str(curr))
 		stopCondition = self.statesEqual(curr, closest)
 		# get best path, and create funnels
-		p = self.findPath(curr, closest)
-		self.funnel(p)
+		p = self.findPath(curr, closest, plots)
+		self.funnel(p, plots)
 		print("done funnel!")
-		self.visualise_RRT()
-		p = self.findPath(curr, closest)
+		if plots:
+			self.visualise_RRT()
+		p = self.findPath(curr, closest, plots)
 		while not stopCondition:
 			actions = p[0][2]
 			p = p[1:]
@@ -524,6 +540,7 @@ class L4Bot:
 			self.send_actions(actions)
 			curr = self.state_estimate()
 			ideal_pos = p[0][0]
+
 			if (self.statesEqual(curr, ideal_pos)):
 				print("State is close enough to ideal")
 			# this means we are good!
@@ -544,14 +561,17 @@ class L4Bot:
 		return settings.get_state()
 
 	def send_actions(self, actions):
+		first_time = time.time()
 		for action in actions:
 			start_time = time.time()
 			step = 0.1
 			now_time = time.time()
 			threshold = action[2]
+			self.send_socket(action[0][0], action[0][1])
 			while (now_time - start_time < threshold):
-				self.send_socket(action[0][0], action[0][1])
-				#time.delay(step)
+				if (now_time - first_time > 1):
+					self.send_socket(90, 90)
+					return
 				now_time = time.time()
 		self.send_socket(90,90)
 
@@ -559,51 +579,3 @@ class L4Bot:
 		print("sending uL,uR = " + str([uL,uR]))
 		self.socket.send_motion(uL, uR)
 
-	def experiment_obstacles(self, idx):
-		# 711, 482
-		init = [50, 50]
-
-		if idx == 0:
-			# Box in the middle
-			obs = [
-				[320, 210, 70, 70]
-			]
-			target = [650, 50]
-		elif idx == 1:
-			# parallel parking
-			obs = [
-				[400, 400, 50, 80],
-				[630, 400, 60, 80]  # TODO fix x coord
-			]
-			target = [540, 410, 0]
-		elif idx == 2:
-			obs = [
-				[0, 215, 400, 50],
-				[600, 215, 111, 50]
-			]
-			target = [50, 350]
-		elif idx == 3:
-			obs = [
-				[0, 215, 500, 50],
-			]
-			target = [50, 350]
-		elif idx == 4:
-			obs = [
-				[200, 0, 50, 100],
-				[0, 200, 90, 50]
-			]
-			target = [650, 50]
-		elif idx == 5:
-			obs = [
-				[150, 0, 60, 300],
-				[530, 0, 60, 300],
-				[330, 100, 60, 382]
-			]
-			target = [650, 50]
-		else:
-			return None
-
-		if len(target) == 2:
-			target.append(0)
-
-		return init, obs, target
