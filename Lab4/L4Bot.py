@@ -1,8 +1,8 @@
 import numpy as np
 import mpl_toolkits.mplot3d.axes3d as p3
 import matplotlib.pyplot as plt
-import time
-#from ws4py.client.threadedclient import WebSocketClient
+
+from socket_wrapper import SocketWrapper
 
 
 # TODO: change these
@@ -168,7 +168,7 @@ class L4Bot:
 		self.vertices = []
 		self.edges = []
 		
-		#self.socket = SocketWrapper()
+		self.socket = SocketWrapper()
 		
 		
 	def add_history(self):
@@ -445,4 +445,8 @@ class L4Bot:
 				
 		self.plot_path(path, start, goal, v_initial, v_final)
 		return path
-			
+
+
+	def send_socket(self, uL, uR):
+		self.socket.send_motion(uL, uR)
+
