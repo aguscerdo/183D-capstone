@@ -16,14 +16,14 @@ def run_motion_track():
     # Set the HSV bounds for the two tags
     lower_blue = np.array([90, 100, 90])
     upper_blue = np.array([140, 255, 255])
-    lower_white = np.array([0, 0, 250])
+    lower_white = np.array([0, 0, 150])
     upper_white = np.array([180, 100, 255])
     # Initialize because sometimes we get errors when they dont exist yet
     x2 = 0
     y2 = 0
     y = 0
     x = 0
-    margin = 30
+    margin = 55
 
     robot_x = 0
     robot_y = 0
@@ -43,7 +43,8 @@ def run_motion_track():
         deltaY = y_landmark - y_orig
         deltaX = x_landmark - x_orig
         return angle_trunc(atan2(deltaY, deltaX))
-    obs= [[100, 100, 30, 30], [210, 300, 200, 80]]
+
+    start, obs, goal = settings.experiment_obstacles()
 
     while (1):
         # Read in the frame and create a copy for each circle
@@ -135,7 +136,7 @@ def run_motion_track():
         cv2.putText(frame, 'H:' + str(angle), (350, 30), font, 1, (200, 255, 255), 2, cv2.LINE_AA)
         cv2.line(frame, center, (int(x), int(y)), (255, 0, 0), 2)
         cv2.rectangle(frame, (60, 60), (600, 450), (0, 255, 0), 5)
-
+        cv2.circle(frame, (60+goal[0],450-goal[1]), 15, (0, 255, 0), -1)
 
 
         #plot obstacles
