@@ -7,54 +7,59 @@ import copy
 import math
 from math import pi as PI
 from math import *
-
-#Import the VideoCamera feed
+from run_lab4 import obs
+# Import the VideoCamera feed
 cap = cv2.VideoCapture(0)
 
-#Set the HSV bounds for the two tags
+# Set the HSV bounds for the two tags
 lower_blue = np.array([90, 100, 90])
 upper_blue = np.array([140, 255, 255])
-lower_white = np.array([0,0,200])
-upper_white = np.array([180,255,255])
+lower_white = np.array([0, 0, 250])
+upper_white = np.array([180, 100, 255])
 
-#Functions for computing the heading 
+
+def state_estimate():
+    return [robot_x,robot_y,angle]
+# Functions for computing the heading
 def angle_trunc(a):
     while a < 0.0:
         a += pi * 2
     return a
-#Function for computing the heading
+
+
+# Function for computing the heading
 def getAngleBetweenPoints(x_orig, y_orig, x_landmark, y_landmark):
     deltaY = y_landmark - y_orig
     deltaX = x_landmark - x_orig
     return angle_trunc(atan2(deltaY, deltaX))
 
-#Initialize because sometimes we get errors when they dont exist yet
-x2=0
-y2=0
-y=0
-x=0
-    
+
+# Initialize because sometimes we get errors when they dont exist yet
+x2 = 0
+y2 = 0
+y = 0
+x = 0
+margin = 30
+
 while (1):
-    #Read in the frame and create a copy for each circle
+    # Read in the frame and create a copy for each circle
     _, frame = cap.read()
     frame2 = copy.deepcopy(frame)
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)        #Convert to HSV values
-    hsv2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2HSV)      #Do the same for the white circle
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)  # Convert to HSV values
+    hsv2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2HSV)  # Do the same for the white circle
 
-
-    mask = cv2.inRange(hsv, lower_blue, upper_blue)   #Create the Mask and filter it so its nice
+    mask = cv2.inRange(hsv, lower_blue, upper_blue)  # Create the Mask and filter it so its nice
     mask = cv2.erode(mask, None, iterations=2)
     mask = cv2.dilate(mask, None, iterations=2)
     res = cv2.bitwise_and(frame, frame, mask=mask)
     kernel = np.ones((15, 15), np.float32) / 225
     res = cv2.filter2D(res, -1, kernel)
 
-    #Look for Contours
-    cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+    # Look for Contours
+    cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cnts = imutils.grab_contours(cnts)
     center = None
 
-    
     # only proceed if at least one contour was found
     if len(cnts) > 0:
         # find the largest contour in the mask, then use
@@ -74,9 +79,7 @@ while (1):
             cv2.circle(frame, center, 5, (0, 0, 255), -1)
             font = cv2.FONT_HERSHEY_SIMPLEX
 
-
-
-    #Do the Same for whiteCircle
+    # Do the Same for whiteCircle
     mask2 = cv2.inRange(hsv2, lower_white, upper_white)
     mask2 = cv2.erode(mask2, None, iterations=2)
     mask2 = cv2.dilate(mask2, None, iterations=2)
@@ -87,7 +90,7 @@ while (1):
     res2 = cv2.medianBlur(res2, 15)
 
     cnts2 = cv2.findContours(mask2.copy(), cv2.RETR_EXTERNAL,
-                            cv2.CHAIN_APPROX_SIMPLE)
+                             cv2.CHAIN_APPROX_SIMPLE)
     cnts2 = imutils.grab_contours(cnts2)
     center = None
 
@@ -109,33 +112,39 @@ while (1):
                        (0, 255, 255), 2)
             cv2.circle(frame, center, 5, (0, 0, 255), -1)
 
+    # Position Of robot to be Outputted
+    Robot_x = ((x2 - 60) * 711) / 540
+    Robot_y = ((450 - y2) * 482) / 450
 
+    # Position of the robot head (used for finding the heading)
+    Head_x = x - 60
+    Head_y = 450 - y
 
+    # Calculate the heading
+    Angle = getAngleBetweenPoints(Robot_x, Robot_y, Head_x, Head_y)
 
-    #Position Of robot to be Outputted
-    Robot_x = ((x2-60)* 711) / 540
-    Robot_y = ((450-y2)*482) / 450
-    
-    #Position of the robot head (used for finding the heading)
-    Head_x = x-60
-    Head_y = 450-y
-    
-    #Calculate the heading 
-    Angle = getAngleBetweenPoints(Robot_x,Robot_y,Head_x,Head_y)
-
-    #Output Lines, Shapes,and Text
+    # Output Lines, Shapes,and Text
     font = cv2.FONT_HERSHEY_SIMPLEX
     cv2.putText(frame, 'X:' + str(round(Robot_x)), (0, 30), font, 1, (200, 255, 255), 2, cv2.LINE_AA)
     cv2.putText(frame, 'Y:' + str(round(Robot_y)), (200, 30), font, 1, (200, 255, 255), 2, cv2.LINE_AA)
     cv2.putText(frame, 'H:' + str(Angle), (350, 30), font, 1, (200, 255, 255), 2, cv2.LINE_AA)
-
-    cv2.line(frame, center, (int(x), int(y)), (255,0, 0), 2)
+    cv2.line(frame, center, (int(x), int(y)), (255, 0, 0), 2)
     cv2.rectangle(frame, (60, 60), (600, 450), (0, 255, 0), 5)
 
-    #Display Images
+
+    #plot obstacles
+    for i in range(len(obs)):
+        topL = (40+obs[i][0],450-obs[i][1]-obs[i][3])
+        bottomR = (40+obs[i][0]+obs[i][2],450-obs[i][1])
+        cv2.rectangle(frame, topL, bottomR, (255, 255, 255), 2)
+        cv2.rectangle(frame, (topL[0]-margin,topL[1]-margin),(bottomR[0]+margin,bottomR[1]+margin) ,(0, 0, 255), 2)
+
+
+
+    # Display Images
     cv2.imshow('Original', frame)
     cv2.imshow('res', res)
-    cv2.imshow('res2',res2)
+    cv2.imshow('res2', res2)
 
     k = cv2.waitKey(5) & 0xFF
     if k == 27:
