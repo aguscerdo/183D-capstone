@@ -41,7 +41,7 @@ class Thread_B(threading.Thread):
         db.load_obstacles(obs)
         time.sleep(2)
         start = settings.get_state()
-        db.run(start, goal, branches_per_evolution=400, num_evolutions=5, plots=True)
+        db.run2(start, goal, branches_per_evolution=1000, num_evolutions=4, plots=True)
         print("done run")
 
 b = Thread_B("RRT_run")

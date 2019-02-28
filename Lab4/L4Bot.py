@@ -506,6 +506,7 @@ class L4Bot:
 
 	def run2(self, start, goal, branches_per_evolution=1000, num_evolutions=10,plots=False):
 		for i in range(num_evolutions):
+			print("i: " + str(i))
 			self.reverse_RRT(goal, num_branches=branches_per_evolution)
 			if plots:
 				self.visualise_RRT()
