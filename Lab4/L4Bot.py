@@ -6,15 +6,15 @@ from socket_wrapper import SocketWrapper
 
 
 # TODO: change these
-timeToTurnOneRadian = 1.0 # 1000 ms
-timeToTravelOneMM = 0.01 # 10 ms
+timeToTurnOneRadian = 0.584 # 1000 ms
+timeToTravelOneMM = 0.01529 # 10 ms
 xconst = 1.0/360/timeToTravelOneMM 
 yconst = 1.0/360/timeToTravelOneMM
 thconst = 1.0/180/timeToTurnOneRadian
 
 RightTurn = [0.0, 180.0]
 LeftTurn = [180.0,0.0]
-ForwardMovement = [180.0, 180.0]
+ForwardMovement = [140.0, 140.0]
 
 class Environment:
 	def __init__(self, L, W, robL, robW):

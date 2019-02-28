@@ -158,13 +158,13 @@ void I2CwriteByte(uint8_t Address, uint8_t Register, uint8_t Data)
 void loop() {
   wsLoop();
   httpLoop();
-  currTime = millis();
-  if (currTime - prevTime > interval){
-    mag = sendMagnetometerData(webID);
-    sendLidarData(webID, lidars);
-    kalman(leftWheel, rightWheel, lidars[1], lidars[0], mag, webID);
-    prevTime = currTime;
-  }
+//  currTime = millis();
+//  if (currTime - prevTime > interval){
+//    mag = sendMagnetometerData(webID);
+//    sendLidarData(webID, lidars);
+//    kalman(leftWheel, rightWheel, lidars[1], lidars[0], mag, webID);
+//    prevTime = currTime;
+//  }
 }
 
 
