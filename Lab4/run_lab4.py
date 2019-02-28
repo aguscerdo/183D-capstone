@@ -1,9 +1,13 @@
 from L4Bot import L4Bot
+import time
 
 def main():
-	db = L4Bot(711, 482, 600.0, 300.0, 0.0)  #Test Area is 711mm by 482mm
+	db = L4Bot(711, 482, 50.0, 50.0, 0.0)  #Test Area is 711mm by 482mm
 	obs = [[100, 100, 30, 30], [210, 300, 200, 80]]
+
+	start, obs, goal = db.experiment_obstacles(5)
 	db.load_obstacles(obs)
+	# db.set_pos(goal[0], goal[1])
 	#db.plot()
 	start = [600,300,0]
 	goal = [100,400,0]
