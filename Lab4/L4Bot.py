@@ -1,14 +1,14 @@
 import numpy as np
 import mpl_toolkits.mplot3d.axes3d as p3
 import matplotlib.pyplot as plt
-
+import time
 from socket_wrapper import SocketWrapper
 
 
 # TODO: change these
 timeToTurnOneRadian = 1.0 # 1000 ms
 timeToTravelOneMM = 0.01 # 10 ms
-xconst = 1.0/360/timeToTravelOneMM
+xconst = 1.0/360/timeToTravelOneMM 
 yconst = 1.0/360/timeToTravelOneMM
 thconst = 1.0/180/timeToTurnOneRadian
 
@@ -20,28 +20,28 @@ class Environment:
 	def __init__(self, L, W, robL, robW):
 		self.L = L
 		self.W = W
-
+		
 		self.mar = max(robL, robW) / 2
-
+	
 		self.obstacles = []
-
-
+		
+	
 	def load_obstacles(self, obs):
 		"""
-
+		
 		:param obs: list of obstacles: obstacle is tuple of (x0, y0, length, width)
 		:return:
 		"""
-
+		
 		self.obstacles = np.asarray([o for o in obs])
-
-
+		
+		
 	def plot_grid(self):
 		# Plot edge
 		x_edge = [0, self.L, self.L, 0, 0]
 		y_edge = [0, 0, self.W, self.W, 0]
 		plt.plot(x_edge, y_edge, c='k')
-
+		
 		# Plot edge margin
 		x_edge = [self.mar, self.L-self.mar, self.L-self.mar, self.mar, self.mar]
 		y_edge = [self.mar, self.mar, self.W-self.mar, self.W-self.mar, self.mar]
@@ -50,15 +50,15 @@ class Environment:
 		for o in self.obstacles:
 			x0 = o[0]
 			y0 = o[1]
-
+			
 			l = o[2]
 			w = o[3]
-
+			
 			# Plot obs
 			x_obs = [x0, x0+l, x0+l, x0, x0]
 			y_obs = [y0, y0, y0+w, y0+w, y0]
 			plt.plot(x_obs, y_obs, c='g')
-
+			
 			# Plot margin
 			x_mar = [x0-self.mar, x0+l+self.mar, x0+l+self.mar, x0-self.mar, x0-self.mar]
 			y_mar = [y0-self.mar, y0-self.mar, y0+w+self.mar, y0+w+self.mar, y0-self.mar]
@@ -69,7 +69,7 @@ class Environment:
 		x = np.random.uniform(low=0.0, high=self.L)
 		y = np.random.uniform(low=0.0, high=self.W)
 		return [x, y]
-
+			
 	def collision(self, state):
 		# return True if collission, False otherwise
 		m = self.mar
@@ -90,15 +90,15 @@ class Environment:
 			y0 = obstacle[1]
 			l = obstacle[2]
 			w  = obstacle[3]
-
+			
 			x_mar = np.asarray([
 				x0-self.mar, x0-self.mar, x0-self.mar,
 				x0+l+self.mar, x0+l+self.mar, x0+l+self.mar,
 				x0+l+self.mar, x0+l+self.mar, x0+l+self.mar,
 				x0-self.mar, x0-self.mar, x0-self.mar,
 				x0-self.mar, x0-self.mar, x0-self.mar,
-				])
-
+			])
+			
 			y_mar = np.asarray([
 				y0-self.mar, y0-self.mar, y0-self.mar,
 				y0-self.mar, y0-self.mar, y0-self.mar,
@@ -106,22 +106,22 @@ class Environment:
 				y0+w+self.mar, y0+w+self.mar, y0+w+self.mar,
 				y0-self.mar, y0-self.mar, y0-self.mar
 			])
-
+			
 			x_mar = np.concatenate((x_mar, x_mar))
 			y_mar = np.concatenate((y_mar, y_mar))
-
+			
 			h_mar = np.asarray([
 				0, 1, 0,
 				0, 1, 0,
 				0, 1, 0,
 				0, 1, 0,
 				0, 1, 0,
-
+				
 			], dtype=np.float)
-
+			
 			h_mar = np.append(h_mar, (1-h_mar))
 			h_mar *= 2*np.pi
-
+			
 			ax.plot(x_mar, y_mar, h_mar, c='k')
 
 	def plot_2d_obstacles(self):
@@ -130,15 +130,15 @@ class Environment:
 			y0 = obstacle[1]
 			l = obstacle[2]
 			w  = obstacle[3]
-
+			
 			x_mar = np.asarray([
 				x0-self.mar, x0-self.mar, x0-self.mar,
 				x0+l+self.mar, x0+l+self.mar, x0+l+self.mar,
 				x0+l+self.mar, x0+l+self.mar, x0+l+self.mar,
 				x0-self.mar, x0-self.mar, x0-self.mar,
 				x0-self.mar, x0-self.mar, x0-self.mar,
-				])
-
+			])
+			
 			y_mar = np.asarray([
 				y0-self.mar, y0-self.mar, y0-self.mar,
 				y0-self.mar, y0-self.mar, y0-self.mar,
@@ -146,11 +146,11 @@ class Environment:
 				y0+w+self.mar, y0+w+self.mar, y0+w+self.mar,
 				y0-self.mar, y0-self.mar, y0-self.mar
 			])
-
+			
 			x_mar = np.concatenate((x_mar, x_mar))
 			y_mar = np.concatenate((y_mar, y_mar))
-
-			plt.plot(x_mar, y_mar, c='k')
+			
+			plt.plot(x_mar, y_mar, c='k')	
 
 class L4Bot:
 	def __init__(self, dimX, dimY, x0, y0, h0):
@@ -160,14 +160,15 @@ class L4Bot:
 		self.i = 0
 		self.history = []
 		self.add_history()
-
+		
 		self.dimX = dimX
 		self.dimY = dimY
-
+	
 		self.environment = Environment(dimX, dimY, 85, 90)
 		self.vertices = []
+		self.funnel_verts = []
 		self.edges = []
-
+		
 		self.socket = SocketWrapper()
 
 	def set_pos(self, x, y):
@@ -176,28 +177,28 @@ class L4Bot:
 		self.add_history()
 
 	def add_history(self):
-
+		
 		self.history.append([self.x, self.y, self.h, self.i])
 		self.i += 1
-
-
+		
+	
 	def plot(self):
 		self.environment.plot_grid()
-
+		
 		arr = np.asarray(self.history)
 		x = arr[:, 0]
 		y = arr[:, 1]
 		h = arr[:, 2]
 		t = arr[:, 3]
-
+		
 		plt.scatter(x, y, c=t, s=100, cmap='cool')
 		plt.plot(x, y, c='b')
-
+		
 		plt.xlim((-0.5, self.dimX+0.5))
 		plt.ylim((-0.5, self.dimY+0.5))
 		plt.axis('equal')
-
-
+		
+		
 		plt.show()
 
 
@@ -216,7 +217,7 @@ class L4Bot:
 		th = start[2]
 		wl = (action[0]-90.0)
 		wr = (action[1]-90.0)
-
+		
 		dx =  1.0*t*xconst * np.cos(th) * (wl + wr)
 		dy = 1.0*t*yconst * np.sin(th) * (wl + wr)
 		dth = 1.0*t*thconst * (wl - wr)
@@ -254,7 +255,7 @@ class L4Bot:
 				i = i + 1
 				if (i < num_actions):
 					threshold += actions[i][2]
-				else:
+				else: 
 					return state
 			# get next state and grow tree, if no collision
 			action_length = step
@@ -265,7 +266,7 @@ class L4Bot:
 				return None
 			curr_time += action_length
 			# we dont add here in original RRT, i think we should(?)
-			#self.vertices.append(next_state)
+			#self.vertices.append(next_state) 
 			#self.edges.append([state, next_state])
 			state = np.copy(next_state)
 		return state
@@ -295,12 +296,12 @@ class L4Bot:
 		elif ( start - end < np.pi and start - end >= 0):
 			direction = 1
 			amount = start - end
-		else:
+		else: 
 			direction = -1
 			amount = 2*np.pi - (start - end)
 		amount = abs(amount)
 		return amount, direction
-
+			
 	def dist(self, start, end):
 		# distance function, actually returns 'time'-like thing (but time proportional to dist)
 		# I.e larger time required means it is "further", so it works out
@@ -328,7 +329,7 @@ class L4Bot:
 			actions.append([RightTurn, amount, t3])
 		time_taken = t1 + t2 + t3
 		return time_taken, actions
-
+		
 	def nearest_neighbour(self, point, verts=None):
 		if (verts is None):
 			verts = self.vertices
@@ -343,7 +344,7 @@ class L4Bot:
 				neighbour = vertice
 				action_set = actions
 		return neighbour, actions, min_dist
-
+			
 	def RRT(self, start_state=None, num_branches=10):
 		if (start_state is None):
 			start_state = [self.x, self.y, self.h]
@@ -355,22 +356,22 @@ class L4Bot:
 			if new_state is not None:
 				self.vertices.append(new_state)
 				self.edges.append([neighbor, new_state, actions])
-
+	
 	def reverse_RRT(self, goal_state=None, num_branches=10):
-		new_vertices = []
+		self.funnel_verts = []
 		if (goal_state is None):
 			goal_state = [self.x, self.y, self.h]
-		new_vertices.append(goal_state)
+		self.funnel_verts.append(goal_state)
 		for k in range(num_branches):
 			randpt = self.random_config()
-			neighbor, actions, dist = self.nearest_neighbour(randpt, new_vertices)
+			neighbor, actions, dist = self.nearest_neighbour(randpt, self.funnel_verts)
 			actions = self.reverse(actions)
 			new_state = self.drive(neighbor, actions, t=1, step=0)
 			if new_state is not None:
-				new_vertices.append(new_state)
-				self.vertices.append(new_state)
-				self.edges.append([new_state, neighbor, actions])
-
+				self.funnel_verts.append(new_state)
+				#self.vertices.append(new_state)
+				#self.edges.append([new_state, neighbor, actions])
+		
 
 	def visualise_RRT(self,show3d=False):
 		for edge in self.edges:
@@ -378,7 +379,7 @@ class L4Bot:
 			ys = [edge[i][1] for i in range(2)]
 			plt.plot(xs, ys, 'r')
 		plt.show()
-
+		
 		if (show3d):
 			fig = plt.figure()
 			ax = p3.Axes3D(fig)
@@ -387,7 +388,7 @@ class L4Bot:
 				x1, y1, th1 = v1
 				x2, y2, th2 = v2
 				ax.plot([x1, x2], [y1, y2], zs=[th1, th2], color='red')
-
+			
 			self.environment.plot_3d_obstacles(ax)
 			plt.show()
 
@@ -462,10 +463,10 @@ class L4Bot:
 				#print("pop!")
 				curr = path[-1][0]
 				path = path[:-1]
-
+				
 		self.plot_path(path, start, goal, v_initial, v_final)
 		return path
-
+			
 	def statesEqual(self, state1, state2, tol=10):
 		diff = np.abs(np.subtract(state1, state2))
 		print("diff is: " + str(diff))
@@ -486,7 +487,7 @@ class L4Bot:
 			xs = [edge[i][0] for i in range(2)]
 			ys = [edge[i][1] for i in range(2)]
 			plt.plot(xs, ys, 'r')
-
+			
 		self.environment.plot_2d_obstacles()
 		plt.show()
 
@@ -518,17 +519,36 @@ class L4Bot:
 			actions = p[0][2]
 			p = p[1:]
 			print("take actions: " + str(actions))
-			for action in actions:
-				curr = self.move(curr, action[0], action[2])
-				#websocket: input uL = action[0][0], uR = action[0][1], how_long=time=action[2] 
-				#change uL, uR based on if we are on course or not (method A- chile suggestion)
-				#curr = position+from+camera/state
+			self.send_actions(actions)
+			curr = state_estimate()
 			ideal_pos = p[0][0]
 			if (self.statesEqual(curr, ideal_pos)):
-				pass#this means we are good!
+				print("State is close enough to ideal")
+				#this means we are good!
 			else:
-				pass#now funnel back to path (method 1- tameez suggestion)
+				print("funnel back to: " + str(ideal_pos))
+				#now funnel back to path (method 1- tameez suggestion)
+				neighbor, actions, _ = self.nearest_neighbour(curr, verts=self.funnel_verts)
+				while(not self.statesEqual(curr, ideal_pos):
+					while(not self.statesEqual(curr, neighbor)):
+						self.reverse_RRT(ideal_pos, num_branches=100)
+						neighbor, actions, _ = self.nearest_neighbour(curr, verts=self.funnel_verts)
+					#take actions
+					self.send_actions(actions)
+					curr = state_estimate()
 			stopCondition = self.statesEqual(curr, closest)
+
+	def send_actions(self, actions):
+		for action in actions:
+			start_time = time.time()
+			step = 0.1
+			now_time = time.time()
+			threshold = action[2]
+			while (now_time - start_time < threshold):
+				self.send_socket(action[0][0], action[0][1])
+				time.delay(step)
+				now_time = time.time()
+
 
 	def send_socket(self, uL, uR):
 		self.socket.send_motion(uL, uR)
