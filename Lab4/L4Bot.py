@@ -1,8 +1,8 @@
 import numpy as np
 import mpl_toolkits.mplot3d.axes3d as p3
 import matplotlib.pyplot as plt
-import time
-#from ws4py.client.threadedclient import WebSocketClient
+
+from socket_wrapper import SocketWrapper
 
 
 # TODO: change these
@@ -168,7 +168,7 @@ class L4Bot:
 		self.vertices = []
 		self.edges = []
 		
-		#self.socket = SocketWrapper()
+		self.socket = SocketWrapper()
 		
 		
 	def add_history(self):
@@ -526,6 +526,6 @@ class L4Bot:
 				#now funnel back to path (method 1- tameez suggestion)
 			stopCondition = self.statesEqual(curr, closest)
 
-		
-
+	def send_socket(self, uL, uR):
+		self.socket.send_motion(uL, uR)
 

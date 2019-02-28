@@ -17,5 +17,23 @@ def main():
 	#db.run([600,300,0],[600,100,0],branches_per_evolution=40,num_evolutions=1)
 	#print(p)
 
+	commands = [[120, 120], [70, 70]]
+
+	t = time.time()
+	delta = 2.
+
+	i = 0
+
+	while 1:
+		t0 = time.time()
+
+		if t0 > t+delta:
+			i += 1
+			i %= 2
+			c = commands[i]
+			db.send_socket(c[0], c[1])
+			t = t0
+
+
 if __name__ == '__main__':
 	main()
