@@ -14,8 +14,6 @@ from MotionTrack import run_motion_track
 import settings
 
 
-obs = [[100, 100, 30, 30], [210, 300, 200, 80]]
-
 class Thread_A(threading.Thread):
     def __init__(self, name):
         threading.Thread.__init__(self)
@@ -31,20 +29,23 @@ class Thread_B(threading.Thread):
         threading.Thread.__init__(self)
         self.name = name
 
+        experiment_idx = 1 # TODO change this to experiment number
+        settings.set_idx(experiment_idx)
+
+
     def run(self):
-        print("start")
-        db = L4Bot(711, 482, 600.0, 300.0, 0.0)  # Test Area is 711mm by 482mm
+        start, obs, goal = settings.experiment_obstacles()
+
+        db = L4Bot(711, 482, 50.0, 50.0, 0.0)  # Test Area is 711mm by 482mm
+
         db.load_obstacles(obs)
-        # db.plot()
-        start = [600, 300, 0]
-        goal = [100, 400, 0]
-
-
-        db.run(start, goal, branches_per_evolution=10, num_evolutions=1)
+        time.sleep(2)
+        start = settings.get_state()
+        db.run(start, goal, branches_per_evolution=400, num_evolutions=5, plots=True)
         print("done run")
 
-a = Thread_A("camera_position_tracking")
 b = Thread_B("RRT_run")
+a = Thread_A("camera_position_tracking")
 
 a.start()
 b.start()
