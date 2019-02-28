@@ -1,7 +1,7 @@
 import numpy as np
 import mpl_toolkits.mplot3d.axes3d as p3
 import matplotlib.pyplot as plt
-
+import time
 from socket_wrapper import SocketWrapper
 
 
@@ -14,7 +14,7 @@ thconst = 1.0/180/timeToTurnOneRadian
 
 RightTurn = [0.0, 180.0]
 LeftTurn = [180.0,0.0]
-ForwardMovement = [180.0, 180.0]
+ForwardMovement = [140.0, 140.0]
 
 class Environment:
 	def __init__(self, L, W, robL, robW):
@@ -170,8 +170,12 @@ class L4Bot:
 		self.edges = []
 		
 		self.socket = SocketWrapper()
-		
-		
+
+	def set_pos(self, x, y):
+		self.x = x
+		self.y = y
+		self.add_history()
+
 	def add_history(self):
 		
 		self.history.append([self.x, self.y, self.h, self.i])
@@ -364,7 +368,7 @@ class L4Bot:
 			actions = self.reverse(actions)
 			new_state = self.drive(neighbor, actions, t=1, step=0)
 			if new_state is not None:
-				new_vertices.append(new_state)
+				self.funnel_verts.append(new_state)
 				#self.vertices.append(new_state)
 				#self.edges.append([new_state, neighbor, actions])
 		
@@ -547,8 +551,59 @@ class L4Bot:
 				self.send_socket(action[0][0], action[0][1])
 				time.delay(step)
 				now_time = time.time()
-		
+
 
 	def send_socket(self, uL, uR):
 		self.socket.send_motion(uL, uR)
 
+
+	def experiment_obstacles(self, idx):
+		# 711, 482
+		init = [50, 50]
+
+		if idx == 0:
+			# Box in the middle
+			obs = [
+				[320, 210, 70, 70]
+			]
+			target = [650, 50]
+		elif idx == 1:
+			# parallel parking
+			obs = [
+				[400, 400, 50, 80],
+				[630, 400, 60, 80]  # TODO fix x coord
+			]
+			target = [540, 410, 0]
+		elif idx == 2:
+			obs = [
+				[0, 215, 400, 50],
+				[600, 215, 111, 50]
+			]
+			target = [50, 350]
+		elif idx == 3:
+			obs = [
+				[0, 215, 500, 50],
+			]
+			target = [50, 350]
+		elif idx == 4:
+			obs = [
+				[200, 0, 50, 100],
+				[0, 200, 90, 50]
+			]
+			target = [650, 50]
+		elif idx == 5:
+			obs = [
+				[150, 0, 60, 300],
+				[530, 0, 60, 300],
+				[330, 100, 60, 382]
+			]
+			target = [650, 50]
+		else:
+			return None
+
+
+
+		if len(target) == 2:
+			target.append(0)
+
+		return init, obs, target
