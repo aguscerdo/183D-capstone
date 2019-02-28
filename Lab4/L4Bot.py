@@ -528,19 +528,20 @@ class L4Bot:
 		stopCondition = self.statesEqual(curr, closest)
 		# get best path, and create funnels
 		p = self.findPath(curr, closest, plots)
-		self.funnel(p, plots)
-		print("done funnel!")
+		#self.funnel(p, plots)
+		#print("done funnel!")
 		if plots:
 			self.visualise_RRT()
-		p = self.findPath(curr, closest, plots)
+		#p = self.findPath(curr, closest, plots)
 		while not stopCondition:
 			actions = p[0][2]
-			p = p[1:]
 			print("take actions: " + str(actions))
 			self.send_actions(actions)
 			curr = self.state_estimate()
-			ideal_pos = p[0][0]
-
+			print("finding another path!")
+			p = self.findPath(curr, closest, plots)
+			stopCondition = self.statesEqual(curr, closest)
+			"""
 			if (self.statesEqual(curr, ideal_pos)):
 				print("State is close enough to ideal")
 			# this means we are good!
@@ -555,7 +556,9 @@ class L4Bot:
 					# take actions
 					self.send_actions(actions)
 					curr = self.state_estimate()
-			stopCondition = self.statesEqual(curr, closest)
+			
+			"""
+		print("Task done! at goal!!!!!!!!")
 
 	def state_estimate(self):
 		return settings.get_state()
@@ -569,10 +572,12 @@ class L4Bot:
 			threshold = action[2]
 			self.send_socket(action[0][0], action[0][1])
 			while (now_time - start_time < threshold):
+				print("Taking action " + str(action[0]))
+				time.sleep(0.01)
+				now_time = time.time()
 				if (now_time - first_time > 1):
 					self.send_socket(90, 90)
 					return
-				now_time = time.time()
 		self.send_socket(90,90)
 
 	def send_socket(self, uL, uR):
