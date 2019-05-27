@@ -21,7 +21,7 @@ class SocketWrapper:
 		payload = bytearray(payload)
 
 		self.socket.send(bytearray(payload), True)
-		print('Payload sent: {}'.format(payload))
+
 
 
 	def close(self):
